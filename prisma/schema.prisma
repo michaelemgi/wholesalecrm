@@ -1,0 +1,511 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── CUSTOMER & CONTACTS ────────────────────────────────────────────────────
+
+model Customer {
+  id                 String   @id @default(cuid())
+  name               String
+  industry           String
+  logo               String?
+  accountTier        String   // "Enterprise" | "Mid-Market" | "SMB"
+  region             String
+  address            String
+  totalRevenue       Float    @default(0)
+  lastOrderDate      String?
+  creditLimit        Float    @default(0)
+  outstandingBalance Float    @default(0)
+  assignedRep        String
+  accountSince       String
+  paymentScore       Int      @default(0)
+  orderFrequencyDays Int      @default(0)
+  topProducts        String   @default("[]") // JSON array of strings
+  tags               String   @default("[]") // JSON array of strings
+
+  contacts             Contact[]
+  orders               Order[]
+  invoices             Invoice[]
+  communications       Communication[]
+  pipelineDeals        PipelineDeal[]
+  standingOrders       StandingOrder[]
+  purchaseOrders       PurchaseOrder[]
+  billingAgreements    BillingAgreement[]
+  paymentCards         PaymentCard[]
+  customerProductPrices CustomerProductPrice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id         String  @id @default(cuid())
+  name       String
+  email      String
+  phone      String
+  role       String
+  isPrimary  Boolean @default(false)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── PRODUCTS ───────────────────────────────────────────────────────────────
+
+model Product {
+  id                String  @id @default(cuid())
+  sku               String  @unique
+  name              String
+  category          String
+  unitPrice         Float
+  wholesalePrice    Float
+  tier1Price        Float
+  tier2Price        Float
+  tier3Price        Float
+  vipPrice          Float
+  stockLevel        Int     @default(0)
+  reorderPoint      Int     @default(0)
+  warehouseLocation String
+  warehouse         String
+  unit              String
+  weight            Float   @default(0)
+  supplier          String  // supplier name (not FK)
+  leadTimeDays      Int     @default(0)
+  expiryDate        String?
+  imageUrl          String?
+  status            String  @default("Active") // "Active" | "Low Stock" | "Out of Stock" | "Discontinued"
+
+  orderItems          OrderItem[]
+  standingOrderItems  StandingOrderItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  customerProductPrices CustomerProductPrice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── ORDERS ─────────────────────────────────────────────────────────────────
+
+model Order {
+  id             String  @id @default(cuid())
+  orderNumber    String  @unique
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  customerName   String  // denormalized
+  status         String  @default("Draft") // "Draft" | "Confirmed" | "Processing" | "Picking" | "Packed" | "Shipped" | "Delivered" | "Returned"
+  subtotal       Float   @default(0)
+  tax            Float   @default(0)
+  shipping       Float   @default(0)
+  discount       Float   @default(0)
+  total          Float   @default(0)
+  paymentTerms   String
+  paymentStatus  String  @default("Unpaid") // "Unpaid" | "Partial" | "Paid" | "Overdue"
+  shippingMethod String
+  trackingNumber String?
+  deliveryDate   String?
+  assignedRep    String
+  notes          String?
+
+  items    OrderItem[]
+  invoices Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+
+  orderId String
+  order   Order @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── STANDING ORDERS ────────────────────────────────────────────────────────
+
+model StandingOrder {
+  id             String  @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  customerName   String
+  frequency      String  // "Weekly" | "Biweekly" | "Monthly"
+  nextDelivery   String
+  status         String  @default("Active") // "Active" | "Paused" | "Cancelled"
+  paymentTerms   String
+  assignedRep    String
+  notes          String?
+
+  items StandingOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StandingOrderItem {
+  id          String @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+
+  standingOrderId String
+  standingOrder   StandingOrder @relation(fields: [standingOrderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── PURCHASE ORDERS ────────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id              String  @id @default(cuid())
+  poNumber        String  @unique
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  supplierName    String
+  status          String  @default("Draft") // "Draft" | "Sent" | "Confirmed" | "Received" | "Cancelled"
+  subtotal        Float   @default(0)
+  tax             Float   @default(0)
+  shipping        Float   @default(0)
+  total           Float   @default(0)
+  expectedDate    String?
+  receivedDate    String?
+  notes           String?
+
+  items PurchaseOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseOrderItem {
+  id          String @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── LEADS & PIPELINE ───────────────────────────────────────────────────────
+
+model Lead {
+  id               String  @id @default(cuid())
+  companyName      String
+  contactName      String
+  email            String
+  phone            String
+  linkedIn         String?
+  website          String?
+  industry         String
+  location         String
+  employeeCount    Int     @default(0)
+  estimatedRevenue Float   @default(0)
+  score            Int     @default(0)
+  status           String  @default("Cold") // "Hot" | "Warm" | "Cold"
+  source           String  // "AI Scraper" | "Cold Email" | "Meta Ads" | "Referral" | "Website" | "Trade Show"
+  assignedRep      String?
+  tags             String  @default("[]") // JSON array of strings
+  enrichedData     String? // JSON object { techStack, recentNews, fundingStage }
+  lastContactedAt  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PipelineDeal {
+  id                 String  @id @default(cuid())
+  companyName        String
+  contactName        String
+  value              Float   @default(0)
+  stage              String  @default("New Lead") // "New Lead" | "Contacted" | "Qualified" | "Proposal Sent" | "Negotiation" | "Won" | "Lost"
+  assignedRep        String
+  assignedRepAvatar  String?
+  leadSource         String
+  daysInStage        Int     @default(0)
+  nextActionDate     String
+  winProbability     Float   @default(0)
+  notes              String?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── TEAM ───────────────────────────────────────────────────────────────────
+
+model TeamMember {
+  id               String @id @default(cuid())
+  name             String
+  email            String @unique
+  role             String // "SDR" | "Closer" | "Account Manager" | "Operations" | "Admin"
+  avatar           String?
+  activeDeals      Int    @default(0)
+  revenueGenerated Float  @default(0)
+  activityScore    Float  @default(0)
+  dealsClosedMTD   Int    @default(0)
+  callsMade        Int    @default(0)
+  emailsSent       Int    @default(0)
+  meetingsHeld     Int    @default(0)
+  targetRevenue    Float  @default(0)
+  commissionRate   Float  @default(0)
+  commissionEarned Float  @default(0)
+  joinDate         String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── EMAIL CAMPAIGNS ────────────────────────────────────────────────────────
+
+model EmailCampaign {
+  id              String  @id @default(cuid())
+  name            String
+  status          String  @default("Draft") // "Active" | "Paused" | "Completed" | "Draft"
+  type            String  // "Cold Outreach" | "Follow-up" | "Newsletter" | "Re-engagement"
+  totalContacts   Int     @default(0)
+  sent            Int     @default(0)
+  opened          Int     @default(0)
+  replied         Int     @default(0)
+  bounced         Int     @default(0)
+  positiveReplies Int     @default(0)
+  startDate       String
+  endDate         String?
+
+  steps EmailSequenceStep[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSequenceStep {
+  id       String  @id @default(cuid())
+  type     String  // "email" | "wait" | "condition"
+  subject  String?
+  body     String?
+  waitDays Int?
+  variants String? // JSON array of { subject, body }
+
+  emailCampaignId String
+  emailCampaign   EmailCampaign @relation(fields: [emailCampaignId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── META CAMPAIGNS ─────────────────────────────────────────────────────────
+
+model MetaCampaign {
+  id          String  @id @default(cuid())
+  name        String
+  status      String  @default("Active") // "Active" | "Paused" | "Completed"
+  objective   String
+  spend       Float   @default(0)
+  budget      Float   @default(0)
+  impressions Int     @default(0)
+  clicks      Int     @default(0)
+  ctr         Float   @default(0)
+  cpc         Float   @default(0)
+  cpl         Float   @default(0)
+  leads       Int     @default(0)
+  roas        Float   @default(0)
+  creativeUrl String?
+  startDate   String
+  endDate     String?
+  audiences   String  @default("[]") // JSON array of strings
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── INVOICES ───────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String  @id @default(cuid())
+  invoiceNumber String  @unique
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  customerName  String  // denormalized
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id])
+  status        String  @default("Draft") // "Draft" | "Sent" | "Viewed" | "Paid" | "Partial" | "Overdue" | "Void"
+  amount        Float   @default(0)
+  paidAmount    Float   @default(0)
+  dueDate       String
+  issuedDate    String
+  paidDate      String?
+  paymentTerms  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── EXPENSES ───────────────────────────────────────────────────────────────
+
+model Expense {
+  id          String @id @default(cuid())
+  category    String // "COGS" | "Shipping" | "Marketing" | "Payroll" | "Overhead" | "Utilities" | "Software"
+  description String
+  amount      Float  @default(0)
+  vendor      String
+  date        String
+  status      String @default("Pending") // "Pending" | "Approved" | "Paid"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── AI INSIGHTS ────────────────────────────────────────────────────────────
+
+model AIInsight {
+  id          String  @id @default(cuid())
+  type        String  // "revenue" | "churn" | "inventory" | "email" | "lead" | "optimization" | "alert"
+  title       String
+  description String
+  impact      String  // "high" | "medium" | "low"
+  actionLabel String?
+
+  createdAt DateTime @default(now())
+}
+
+// ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
+
+model Notification {
+  id          String  @id @default(cuid())
+  title       String
+  description String
+  type        String  // "order" | "lead" | "payment" | "alert" | "team" | "ai"
+  read        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+// ─── MONTHLY FINANCIALS ─────────────────────────────────────────────────────
+
+model MonthlyFinancial {
+  id           String @id @default(cuid())
+  month        String @unique
+  revenue      Float  @default(0)
+  expenses     Float  @default(0)
+  profit       Float  @default(0)
+  ordersCount  Int    @default(0)
+  newCustomers Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── SUPPLIER ───────────────────────────────────────────────────────────────
+
+model Supplier {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  contactName   String
+  email         String
+  phone         String
+  address       String
+  website       String?
+  category      String
+  paymentTerms  String
+  leadTimeDays  Int     @default(0)
+  rating        Float   @default(0)
+  totalOrders   Int     @default(0)
+  totalSpend    Float   @default(0)
+  lastOrderDate String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── PAYMENT & BILLING ──────────────────────────────────────────────────────
+
+model PaymentCard {
+  id             String  @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  cardType       String  // "Visa" | "Mastercard" | "Amex"
+  lastFour       String
+  expiryMonth    Int
+  expiryYear     Int
+  cardholderName String
+  isDefault      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BillingAgreement {
+  id            String  @id @default(cuid())
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  paymentTerms  String
+  creditLimit   Float   @default(0)
+  billingEmail  String
+  billingAddress String
+  autoPayEnabled Boolean @default(false)
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── CUSTOMER PRODUCT PRICING ───────────────────────────────────────────────
+
+model CustomerProductPrice {
+  id          String  @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  customPrice Float
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customerId, productId])
+}
+
+// ─── COMMUNICATION LOG ──────────────────────────────────────────────────────
+
+model Communication {
+  id         String @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  type       String // "Call" | "Email" | "Meeting" | "Note"
+  summary    String
+  rep        String
+  date       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
