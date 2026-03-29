@@ -2192,6 +2192,187 @@ function ImportModal({
   );
 }
 
+// --- Create Product Modal ---
+function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    sku: "",
+    name: "",
+    category: "Food & Beverage",
+    unitPrice: 0,
+    wholesalePrice: 0,
+    stockLevel: 0,
+    reorderPoint: 0,
+    warehouse: "Warehouse A - West",
+    unit: "case",
+    supplier: "Global Supply Co.",
+    leadTimeDays: 7,
+    weight: 0,
+  });
+
+  const productCategories = ["Food & Beverage", "Building Materials", "Packaging", "Industrial", "Chemicals", "Agriculture", "Paper Goods"];
+  const warehouses = ["Warehouse A - West", "Warehouse B - Central", "Warehouse C - East"];
+  const suppliers = ["Global Supply Co.", "Pacific Trade Inc.", "Midwest Wholesale", "Southern Distributors", "Atlantic Imports"];
+
+  const update = (field: string, value: string | number) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSave = async () => {
+    if (!form.sku.trim()) { setError("SKU is required."); return; }
+    if (!form.name.trim()) { setError("Product name is required."); return; }
+    setError("");
+    setSaving(true);
+    try {
+      const wp = Number(form.wholesalePrice) || 0;
+      const body = {
+        sku: form.sku.trim(),
+        name: form.name.trim(),
+        category: form.category,
+        unitPrice: Number(form.unitPrice) || 0,
+        wholesalePrice: wp,
+        tier1Price: Math.round(wp * 0.95),
+        tier2Price: Math.round(wp * 0.9),
+        tier3Price: Math.round(wp * 0.85),
+        vipPrice: Math.round(wp * 0.8),
+        stockLevel: Number(form.stockLevel) || 0,
+        reorderPoint: Number(form.reorderPoint) || 0,
+        warehouseLocation: "Aisle 1-Rack 1",
+        warehouse: form.warehouse,
+        unit: form.unit.trim() || "case",
+        weight: Number(form.weight) || 0,
+        supplier: form.supplier,
+        leadTimeDays: Number(form.leadTimeDays) || 0,
+        status: Number(form.stockLevel) === 0 ? "Out of Stock" : Number(form.stockLevel) <= Number(form.reorderPoint) ? "Low Stock" : "Active",
+      };
+      const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error("Failed to create product");
+      onCreated();
+    } catch (e: any) {
+      setError(e.message || "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/25 transition-colors";
+  const labelClass = "block text-xs font-medium text-text-secondary mb-1";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-lg font-semibold text-text-primary">Add Product</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>SKU *</label>
+              <input type="text" value={form.sku} onChange={e => update("sku", e.target.value)} placeholder="SKU-1001" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Product Name *</label>
+              <input type="text" value={form.name} onChange={e => update("name", e.target.value)} placeholder="Organic Olive Oil 5L" className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Category</label>
+              <select value={form.category} onChange={e => update("category", e.target.value)} className={inputClass}>
+                {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Unit</label>
+              <input type="text" value={form.unit} onChange={e => update("unit", e.target.value)} placeholder="case, bag, bottle..." className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Unit Price ($)</label>
+              <input type="number" value={form.unitPrice} onChange={e => update("unitPrice", e.target.value)} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Wholesale Price ($)</label>
+              <input type="number" value={form.wholesalePrice} onChange={e => update("wholesalePrice", e.target.value)} placeholder="0" className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Stock Level</label>
+              <input type="number" value={form.stockLevel} onChange={e => update("stockLevel", e.target.value)} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Reorder Point</label>
+              <input type="number" value={form.reorderPoint} onChange={e => update("reorderPoint", e.target.value)} placeholder="0" className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Warehouse</label>
+              <select value={form.warehouse} onChange={e => update("warehouse", e.target.value)} className={inputClass}>
+                {warehouses.map(w => <option key={w} value={w}>{w}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Supplier</label>
+              <select value={form.supplier} onChange={e => update("supplier", e.target.value)} className={inputClass}>
+                {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Lead Time (Days)</label>
+              <input type="number" value={form.leadTimeDays} onChange={e => update("leadTimeDays", e.target.value)} placeholder="7" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Weight (lbs)</label>
+              <input type="number" value={form.weight} onChange={e => update("weight", e.target.value)} placeholder="0" className={inputClass} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary bg-surface border border-border hover:border-primary/50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary hover:bg-primary-hover text-white transition-colors disabled:opacity-50">
+            {saving ? <><Clock className="h-4 w-4 animate-spin" /> Saving...</> : <><Check className="h-4 w-4" /> Save Product</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // --- Main Page ---
 export default function InventoryPage() {
   const { data: apiProducts = [], mutate: mutateProducts } = useSWR<Product[]>('/api/products', fetcher);
@@ -2202,6 +2383,7 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateProductModal, setShowCreateProductModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
 
@@ -2322,9 +2504,15 @@ export default function InventoryPage() {
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-all shadow-lg shadow-primary/25"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-primary/50 text-sm transition-colors"
           >
             <FileUp className="h-4 w-4" /> Import Products
+          </button>
+          <button
+            onClick={() => setShowCreateProductModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-all shadow-lg shadow-primary/25"
+          >
+            <Plus className="h-4 w-4" /> Add Product
           </button>
         </div>
       </div>
@@ -2405,6 +2593,18 @@ export default function InventoryPage() {
               if (fresh) {
                 setProducts(fresh);
               }
+            }}
+          />
+        )}
+        {showCreateProductModal && (
+          <CreateProductModal
+            onClose={() => setShowCreateProductModal(false)}
+            onCreated={async () => {
+              const fresh = await mutateProducts();
+              if (fresh) {
+                setProducts(fresh);
+              }
+              setShowCreateProductModal(false);
             }}
           />
         )}
