@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ─── CUSTOMER & CONTACTS ────────────────────────────────────────────────────
@@ -64,6 +64,7 @@ model Product {
   id                String  @id @default(cuid())
   sku               String  @unique
   name              String
+  description       String?
   category          String
   unitPrice         Float
   wholesalePrice    Float
@@ -81,6 +82,9 @@ model Product {
   leadTimeDays      Int     @default(0)
   expiryDate        String?
   imageUrl          String?
+  brand             String?
+  brandWebsite      String?
+  tags              String?
   status            String  @default("Active") // "Active" | "Low Stock" | "Out of Stock" | "Discontinued"
 
   orderItems          OrderItem[]

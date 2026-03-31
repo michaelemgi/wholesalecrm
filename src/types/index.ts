@@ -33,6 +33,7 @@ export interface Product {
   id: string;
   sku: string;
   name: string;
+  description?: string;
   category: string;
   unitPrice: number;
   wholesalePrice: number;
@@ -50,6 +51,9 @@ export interface Product {
   leadTimeDays: number;
   expiryDate?: string;
   imageUrl?: string;
+  brand?: string;
+  brandWebsite?: string;
+  tags?: string;
   status: "Active" | "Low Stock" | "Out of Stock" | "Discontinued";
 }
 

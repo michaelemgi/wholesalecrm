@@ -355,7 +355,7 @@ export default function ClientAnalyticsDashboard({
               <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
             </button>
             {showClientDropdown && (
-              <div className="absolute top-full mt-1 left-0 w-80 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+              <div className="absolute top-full mt-1 left-0 w-80 bg-[#1a1f2e] border border-border rounded-xl shadow-2xl z-[100] overflow-hidden">
                 <div className="p-2 border-b border-border">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />

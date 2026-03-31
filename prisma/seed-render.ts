@@ -1,13 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import path from "path";
 
-const dbPath = path.resolve(process.cwd(), "dev.db");
-const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database...");
+  console.log("Seeding PostgreSQL database...");
 
   // ─── CLEAR ALL TABLES (FK order) ──────────────────────────────────────────
   await prisma.customerProductPrice.deleteMany();
@@ -57,13 +53,12 @@ async function main() {
   const supplierNames = ["Global Supply Co.", "Pacific Trade Inc.", "Midwest Wholesale", "Southern Distributors", "Atlantic Imports"];
   const categories = ["Food & Beverage", "Building Materials", "Packaging", "Industrial", "Chemicals", "Agriculture", "Paper Goods"];
 
-  function makeProduct(id: number, sku: string, name: string, cat: string, up: number, wp: number, stock: number, rp: number, wh: string, unit: string, supplier: string, ltd: number, extra?: { description?: string; imageUrl?: string; brand?: string; brandWebsite?: string; tags?: string }) {
+  function makeProduct(id: number, sku: string, name: string, cat: string, up: number, wp: number, stock: number, rp: number, wh: string, unit: string, supplier: string, ltd: number) {
     const status = stock === 0 ? "Out of Stock" : stock <= rp ? "Low Stock" : "Active";
     return {
       id: `prod-${id.toString().padStart(3, "0")}`,
       sku,
       name,
-      description: extra?.description || null,
       category: cat,
       unitPrice: up,
       wholesalePrice: wp,
@@ -79,283 +74,67 @@ async function main() {
       weight: Math.round(up * 0.3),
       supplier,
       leadTimeDays: ltd,
-      imageUrl: extra?.imageUrl || null,
-      brand: extra?.brand || null,
-      brandWebsite: extra?.brandWebsite || null,
-      tags: extra?.tags || null,
       status,
     };
   }
 
   const productsData = [
-    makeProduct(1, "SKU-1001", "Organic Olive Oil 5L", "Food & Beverage", 42, 28, 340, 50, warehouseNames[0], "bottle", supplierNames[0], 7, {
-      description: "Premium cold-pressed organic extra virgin olive oil sourced from Mediterranean groves. Perfect for restaurants, catering, and gourmet food service operations requiring consistent quality.",
-      imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacdc948b6?w=200&h=200&fit=crop",
-      brand: "Terra Verde", brandWebsite: "https://www.terraverdeoils.com", tags: "organic,oil,mediterranean,cooking"
-    }),
-    makeProduct(2, "SKU-1002", "Brown Rice 25kg", "Food & Beverage", 38, 24, 520, 100, warehouseNames[1], "bag", supplierNames[0], 5, {
-      description: "Whole grain brown rice, ideal for bulk food service and wholesale distribution. Nutty flavor and firm texture, sourced from sustainable farms in the Sacramento Valley.",
-      imageUrl: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop",
-      brand: "Valley Harvest", brandWebsite: "https://www.valleyharvestgrains.com", tags: "grain,rice,bulk,wholesome"
-    }),
-    makeProduct(3, "SKU-1003", "Sea Salt 10kg", "Food & Beverage", 15, 9, 890, 150, warehouseNames[0], "bag", supplierNames[2], 4, {
-      description: "Naturally harvested sea salt, coarse grain. Excellent for commercial kitchens and food manufacturing. Mineral-rich with a clean, bright flavor profile.",
-      imageUrl: "https://images.unsplash.com/photo-1518110925495-5fe2c8b2cdb5?w=200&h=200&fit=crop",
-      brand: "Ocean Crest", brandWebsite: "https://www.oceancrestsalt.com", tags: "seasoning,salt,natural,bulk"
-    }),
-    makeProduct(4, "SKU-1004", "All-Purpose Flour 50lb", "Food & Beverage", 22, 14, 1200, 200, warehouseNames[1], "bag", supplierNames[2], 3, {
-      description: "Professional-grade all-purpose flour milled from premium hard red winter wheat. Consistent protein content for reliable baking results across commercial bakery operations.",
-      imageUrl: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&h=200&fit=crop",
-      brand: "King Mills", brandWebsite: "https://www.kingmillsflour.com", tags: "flour,baking,bakery,staple"
-    }),
-    makeProduct(5, "SKU-1005", "Sugar Granulated 50lb", "Food & Beverage", 28, 18, 980, 150, warehouseNames[1], "bag", supplierNames[2], 3, {
-      description: "Fine granulated white cane sugar, ideal for commercial baking, beverage production, and food manufacturing. Dissolves quickly and delivers consistent sweetness.",
-      imageUrl: "https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=200&h=200&fit=crop",
-      brand: "King Mills", brandWebsite: "https://www.kingmillsflour.com", tags: "sugar,sweetener,baking,bulk"
-    }),
-    makeProduct(6, "SKU-1006", "Butter Unsalted 36ct", "Food & Beverage", 96, 72, 180, 40, warehouseNames[0], "case", supplierNames[0], 5, {
-      description: "Grade AA unsalted butter, 36 individually wrapped 1-lb blocks per case. Made from fresh cream for superior flavor in pastry, sauces, and fine dining applications.",
-      imageUrl: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc0d?w=200&h=200&fit=crop",
-      brand: "Dairyland Premium", brandWebsite: "https://www.dairylandpremium.com", tags: "dairy,butter,baking,perishable"
-    }),
-    makeProduct(7, "SKU-1007", "EVOO Premium 5L", "Food & Beverage", 58, 42, 210, 30, warehouseNames[0], "bottle", supplierNames[4], 10, {
-      description: "Estate-bottled Italian extra virgin olive oil with DOP certification. Rich, peppery finish ideal for high-end restaurants and specialty food retailers.",
-      imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacdc948b6?w=200&h=200&fit=crop",
-      brand: "Frantoio d'Oro", brandWebsite: "https://www.frantoiodoro.it", tags: "oil,italian,premium,gourmet"
-    }),
-    makeProduct(8, "SKU-1008", "Pasta Variety Case", "Food & Beverage", 36, 24, 450, 80, warehouseNames[0], "case", supplierNames[4], 8, {
-      description: "Assorted Italian-style dried pasta, including spaghetti, penne, fusilli, and rigatoni. Bronze-die cut for superior sauce adhesion. 24 x 1lb packages per case.",
-      imageUrl: "https://images.unsplash.com/photo-1551462147-ff29053bfc14?w=200&h=200&fit=crop",
-      brand: "Frantoio d'Oro", brandWebsite: "https://www.frantoiodoro.it", tags: "pasta,italian,dried,variety"
-    }),
-    makeProduct(9, "SKU-1009", "San Marzano Tomatoes 6ct", "Food & Beverage", 28, 19, 380, 60, warehouseNames[0], "case", supplierNames[4], 8, {
-      description: "Authentic DOP San Marzano whole peeled tomatoes from the Agro Sarnese-Nocerino region. Essential for premium pizza sauces, ragus, and Italian cuisine.",
-      imageUrl: "https://images.unsplash.com/photo-1546470427-0d4db154ceb8?w=200&h=200&fit=crop",
-      brand: "Frantoio d'Oro", brandWebsite: "https://www.frantoiodoro.it", tags: "tomatoes,canned,italian,sauce"
-    }),
-    makeProduct(10, "SKU-1010", "Frozen Shrimp 10lb", "Food & Beverage", 85, 62, 150, 30, warehouseNames[2], "box", supplierNames[0], 7, {
-      description: "Wild-caught Gulf shrimp, 16/20 count, peeled and deveined, IQF frozen. Ideal for restaurants, catering companies, and seafood distributors requiring premium quality.",
-      imageUrl: "https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=200&h=200&fit=crop",
-      brand: "Coastal Catch", brandWebsite: "https://www.coastalcatchseafood.com", tags: "seafood,shrimp,frozen,wild-caught"
-    }),
-    makeProduct(11, "SKU-1011", "Salmon Fillet Case", "Food & Beverage", 125, 95, 80, 20, warehouseNames[2], "case", supplierNames[0], 3, {
-      description: "Fresh Atlantic salmon fillets, skin-on, individually vacuum sealed. 10 x 6oz portions per case. Sustainably farmed and certified by the ASC.",
-      imageUrl: "https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=200&h=200&fit=crop",
-      brand: "Coastal Catch", brandWebsite: "https://www.coastalcatchseafood.com", tags: "seafood,salmon,fresh,sustainable"
-    }),
-    makeProduct(12, "SKU-1012", "Premium Steak Cuts Case", "Food & Beverage", 245, 185, 65, 15, warehouseNames[2], "case", supplierNames[3], 5, {
-      description: "USDA Prime beef selection including ribeye, NY strip, and filet mignon. Wet-aged 28 days for maximum tenderness and flavor. 8 steaks per case.",
-      imageUrl: "https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=200&h=200&fit=crop",
-      brand: "Heartland Meats", brandWebsite: "https://www.heartlandmeats.com", tags: "beef,steak,prime,premium,protein"
-    }),
-    makeProduct(13, "SKU-1013", "Mixed Greens Case", "Food & Beverage", 32, 22, 200, 50, warehouseNames[0], "case", supplierNames[0], 2, {
-      description: "Pre-washed spring mix salad blend featuring arugula, baby spinach, red leaf, and frisee. 12 x 1lb clamshells per case. Triple-washed and ready to serve.",
-      imageUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=200&fit=crop",
-      brand: "Fresh Fields", brandWebsite: "https://www.freshfieldsproduce.com", tags: "produce,salad,greens,fresh,perishable"
-    }),
-    makeProduct(14, "SKU-1014", "Avocados 48ct", "Food & Beverage", 48, 34, 300, 80, warehouseNames[0], "case", supplierNames[0], 3, {
-      description: "Hass avocados, size 48 count, sourced from Mexico and California. Delivered at stage 3-4 ripeness for ideal 2-3 day shelf life upon receipt.",
-      imageUrl: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=200&h=200&fit=crop",
-      brand: "Fresh Fields", brandWebsite: "https://www.freshfieldsproduce.com", tags: "produce,avocado,fresh,perishable"
-    }),
-    makeProduct(15, "SKU-1015", "Organic Quinoa 25lb", "Food & Beverage", 56, 38, 180, 30, warehouseNames[0], "bag", supplierNames[4], 10, {
-      description: "USDA certified organic tri-color quinoa from Bolivia. High protein content, pre-washed to remove saponins. Ideal for health-conscious food service and retail.",
-      imageUrl: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&h=200&fit=crop",
-      brand: "Andes Gold", brandWebsite: "https://www.andesgoldfoods.com", tags: "grain,quinoa,organic,superfood,protein"
-    }),
-    makeProduct(16, "SKU-1016", "Chia Seeds 10lb", "Food & Beverage", 42, 28, 220, 40, warehouseNames[0], "bag", supplierNames[4], 10, {
-      description: "Premium black chia seeds, sourced from organic farms in Paraguay. Rich in omega-3, fiber, and protein. Perfect for bakeries, smoothie bars, and health food stores.",
-      imageUrl: "https://images.unsplash.com/photo-1514537099923-4c0fc7e73b46?w=200&h=200&fit=crop",
-      brand: "Andes Gold", brandWebsite: "https://www.andesgoldfoods.com", tags: "seeds,superfood,organic,health"
-    }),
-    makeProduct(17, "SKU-1017", "Coconut Oil 5gal", "Food & Beverage", 68, 48, 140, 25, warehouseNames[0], "bucket", supplierNames[4], 12, {
-      description: "Virgin coconut oil, cold-pressed from fresh coconut meat. Suitable for cooking, baking, and food manufacturing. Naturally refined with a neutral flavor profile.",
-      imageUrl: "https://images.unsplash.com/photo-1526318472351-c75fcf070305?w=200&h=200&fit=crop",
-      brand: "Andes Gold", brandWebsite: "https://www.andesgoldfoods.com", tags: "oil,coconut,cooking,natural"
-    }),
-    makeProduct(18, "SKU-1018", "Frozen Pizza Cases", "Food & Beverage", 52, 36, 400, 80, warehouseNames[2], "case", supplierNames[2], 5, {
-      description: "Wholesale frozen cheese and pepperoni pizzas, 12-inch hand-tossed style. 8 pizzas per case. Popular with convenience stores, cafeterias, and quick-serve restaurants.",
-      imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop",
-      brand: "Midwest Kitchen", brandWebsite: "https://www.midwestkitchenfoods.com", tags: "frozen,pizza,convenience,foodservice"
-    }),
-    makeProduct(19, "SKU-1019", "Ice Cream 3gal", "Food & Beverage", 38, 26, 250, 50, warehouseNames[2], "tub", supplierNames[2], 4, {
-      description: "Premium vanilla bean ice cream in 3-gallon food service tubs. Made with real cream and Madagascar vanilla. Perfect for restaurants, scoop shops, and catering.",
-      imageUrl: "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=200&h=200&fit=crop",
-      brand: "Midwest Kitchen", brandWebsite: "https://www.midwestkitchenfoods.com", tags: "frozen,dessert,ice cream,dairy"
-    }),
-    makeProduct(20, "SKU-1020", "Sparkling Water 24pk", "Food & Beverage", 18, 11, 600, 100, warehouseNames[1], "pack", supplierNames[3], 5, {
-      description: "Naturally carbonated sparkling mineral water, 24 x 12oz cans. Sourced from protected springs. Zero calories, zero sweeteners. Great for hospitality and retail.",
-      imageUrl: "https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=200&h=200&fit=crop",
-      brand: "Crystal Springs", brandWebsite: "https://www.crystalspringsbev.com", tags: "beverage,water,sparkling,zero-cal"
-    }),
-    makeProduct(21, "SKU-2001", "Portland Cement 50lb", "Building Materials", 12, 7, 2400, 500, warehouseNames[1], "bag", supplierNames[2], 3, {
-      description: "Type I/II Portland cement meeting ASTM C150 specifications. General-purpose cement for concrete, mortar, and grout applications in commercial and residential construction.",
-      imageUrl: "https://images.unsplash.com/photo-1590579491624-f98f36d4c763?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "cement,concrete,construction,foundation"
-    }),
-    makeProduct(22, "SKU-2002", "Rebar #4 20ft", "Building Materials", 18, 11, 1800, 300, warehouseNames[1], "piece", supplierNames[2], 5, {
-      description: "Grade 60 deformed steel reinforcing bar, #4 (1/2-inch diameter), 20-foot lengths. ASTM A615 certified for structural concrete reinforcement in commercial projects.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "steel,rebar,reinforcement,structural"
-    }),
-    makeProduct(23, "SKU-2003", "Plywood 4x8 3/4in", "Building Materials", 48, 32, 900, 150, warehouseNames[1], "sheet", supplierNames[2], 4, {
-      description: "CDX rated structural plywood, 3/4-inch thickness, 4x8 foot sheets. Suitable for subfloors, wall sheathing, and general construction. APA rated sheathing.",
-      imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "plywood,wood,sheathing,structural"
-    }),
-    makeProduct(24, "SKU-2004", "Concrete Mix 80lb", "Building Materials", 8, 5, 3200, 600, warehouseNames[1], "bag", supplierNames[2], 3, {
-      description: "Pre-mixed concrete blend with Portland cement, sand, and gravel aggregates. Just add water for 4000 PSI strength. Ideal for footings, slabs, and post setting.",
-      imageUrl: "https://images.unsplash.com/photo-1590579491624-f98f36d4c763?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "concrete,mix,foundation,structural"
-    }),
-    makeProduct(25, "SKU-2005", "Drywall 4x8 1/2in", "Building Materials", 14, 9, 1500, 300, warehouseNames[1], "sheet", supplierNames[2], 4, {
-      description: "Standard 1/2-inch gypsum wallboard, 4x8 foot panels. Tapered long edges for smooth finishing. Fire-resistant core meets ASTM C1396 specifications.",
-      imageUrl: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=200&h=200&fit=crop",
-      brand: "WallPro", brandWebsite: "https://www.wallprodrywall.com", tags: "drywall,gypsum,interior,walls"
-    }),
-    makeProduct(26, "SKU-2006", "Insulation R-13 Roll", "Building Materials", 42, 28, 650, 100, warehouseNames[1], "roll", supplierNames[2], 5, {
-      description: "Kraft-faced fiberglass batt insulation, R-13 value for 2x4 wall cavities. 15-inch width, 32-foot roll. Energy Star certified for residential and commercial builds.",
-      imageUrl: "https://images.unsplash.com/photo-1607400201889-565b1ee75f8e?w=200&h=200&fit=crop",
-      brand: "WallPro", brandWebsite: "https://www.wallprodrywall.com", tags: "insulation,fiberglass,energy,thermal"
-    }),
-    makeProduct(27, "SKU-2007", "PVC Pipe 4in 10ft", "Building Materials", 15, 9, 1100, 200, warehouseNames[1], "piece", supplierNames[3], 4, {
-      description: "Schedule 40 PVC pipe, 4-inch diameter, 10-foot sections. NSF-certified for drain, waste, and vent applications. Durable, corrosion-resistant plumbing solution.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "FlowMaster", brandWebsite: "https://www.flowmasterplumbing.com", tags: "plumbing,pipe,pvc,drainage"
-    }),
-    makeProduct(28, "SKU-2008", "Wire 14ga 500ft", "Building Materials", 65, 45, 320, 50, warehouseNames[1], "spool", supplierNames[3], 6, {
-      description: "14-gauge solid copper electrical wire, THHN insulated, 500-foot spool. UL listed for residential and commercial circuits up to 15 amps. Available in multiple colors.",
-      imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=200&h=200&fit=crop",
-      brand: "FlowMaster", brandWebsite: "https://www.flowmasterplumbing.com", tags: "electrical,wire,copper,wiring"
-    }),
-    makeProduct(29, "SKU-2009", "Lumber 2x4 8ft", "Building Materials", 6, 4, 4500, 800, warehouseNames[1], "piece", supplierNames[2], 3, {
-      description: "Kiln-dried SPF (Spruce-Pine-Fir) dimensional lumber, 2x4 nominal, 8-foot lengths. Graded #2 or better for structural framing, blocking, and general construction.",
-      imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "lumber,wood,framing,structural"
-    }),
-    makeProduct(30, "SKU-2010", "Roofing Shingles Bundle", "Building Materials", 35, 24, 800, 150, warehouseNames[1], "bundle", supplierNames[2], 5, {
-      description: "Architectural asphalt roofing shingles with algae-resistant granules. 30-year warranty, Class A fire rating. Covers approximately 33 sq ft per bundle.",
-      imageUrl: "https://images.unsplash.com/photo-1632759145682-4a0f1a4093e8?w=200&h=200&fit=crop",
-      brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com", tags: "roofing,shingles,exterior,weatherproofing"
-    }),
-    makeProduct(31, "SKU-3001", "Corrugated Box 12x12", "Packaging", 2, 1, 8500, 2000, warehouseNames[0], "each", supplierNames[3], 4, {
-      description: "Single-wall corrugated shipping boxes, 12x12x12 inches. 200# test strength, ECT-32 rated. Perfect for e-commerce fulfillment and general shipping needs.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "boxes,shipping,corrugated,e-commerce"
-    }),
-    makeProduct(32, "SKU-3002", "Stretch Wrap 18in", "Packaging", 28, 18, 450, 80, warehouseNames[0], "roll", supplierNames[3], 5, {
-      description: "Cast stretch film, 18-inch width, 1500-foot roll, 80-gauge. High clarity and cling for pallet wrapping. Provides excellent load containment and moisture protection.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "wrap,pallet,stretch,warehouse"
-    }),
-    makeProduct(33, "SKU-3003", "Kraft Paper Rolls", "Packaging", 35, 22, 12, 50, warehouseNames[0], "roll", supplierNames[3], 5, {
-      description: "Heavy-duty kraft paper rolls, 40# weight, 36-inch width, 900-foot roll. Ideal for void fill, wrapping, table covering, and crafts. Recyclable and biodegradable.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "paper,kraft,wrapping,eco-friendly"
-    }),
-    makeProduct(34, "SKU-3004", "Bubble Wrap 24in 250ft", "Packaging", 42, 28, 280, 50, warehouseNames[0], "roll", supplierNames[3], 6, {
-      description: "3/16-inch small bubble cushioning wrap, 24-inch width, 250-foot perforated roll. Provides excellent surface protection for fragile items during shipping and storage.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "bubble,cushioning,protection,fragile"
-    }),
-    makeProduct(35, "SKU-3005", "Packing Tape 6pk", "Packaging", 12, 7, 950, 200, warehouseNames[0], "pack", supplierNames[3], 3, {
-      description: "Heavy-duty clear acrylic packing tape, 2-inch width, 110-yard rolls. 6-pack with one free dispenser. Strong adhesion for sealing corrugated boxes.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "tape,sealing,shipping,adhesive"
-    }),
-    makeProduct(36, "SKU-3006", "Poly Bags 1000ct", "Packaging", 22, 14, 600, 100, warehouseNames[0], "box", supplierNames[3], 4, {
-      description: "Clear polyethylene bags, 9x12 inches, 2-mil thickness, 1000 per box. Reclosable zip-lock style. FDA-approved for food contact, great for retail and food service.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "EcoPack", brandWebsite: "https://www.ecopacksolutions.com", tags: "bags,poly,food-safe,retail"
-    }),
-    makeProduct(37, "SKU-3007", "Aluminum Trays 50ct", "Packaging", 28, 18, 420, 80, warehouseNames[0], "case", supplierNames[3], 5, {
-      description: "Full-size aluminum steam table pans with lids, 50 per case. Deep 3.5-inch depth for catering, buffets, and food storage. Oven and freezer safe.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "EcoPack", brandWebsite: "https://www.ecopacksolutions.com", tags: "aluminum,trays,catering,foodservice"
-    }),
-    makeProduct(38, "SKU-3008", "Food Containers 500ct", "Packaging", 38, 25, 350, 60, warehouseNames[0], "case", supplierNames[3], 5, {
-      description: "Clear hinged-lid deli containers, 16oz capacity, 500 per case. Microwave and freezer safe. Perfect for delis, meal prep companies, and take-out restaurants.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "EcoPack", brandWebsite: "https://www.ecopacksolutions.com", tags: "containers,deli,food-safe,take-out"
-    }),
-    makeProduct(39, "SKU-3009", "Shrink Film 18in", "Packaging", 32, 21, 280, 50, warehouseNames[0], "roll", supplierNames[3], 6, {
-      description: "PVC shrink film, 18-inch centerfold, 100-gauge, 500-foot roll. Provides tamper-evident wrapping with crystal-clear finish. Compatible with all standard heat guns.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "PackRight", brandWebsite: "https://www.packrightusa.com", tags: "shrink,film,tamper-evident,wrapping"
-    }),
-    makeProduct(40, "SKU-3010", "Disposable Plates 500ct", "Packaging", 45, 30, 200, 40, warehouseNames[0], "case", supplierNames[3], 5, {
-      description: "Compostable 9-inch round plates made from sugarcane bagasse. 500 per case. Microwave safe, cut-resistant, and certified BPI compostable for eco-conscious operations.",
-      imageUrl: "https://images.unsplash.com/photo-1607166452427-7e4477c8d7a0?w=200&h=200&fit=crop",
-      brand: "EcoPack", brandWebsite: "https://www.ecopacksolutions.com", tags: "plates,compostable,eco-friendly,disposable"
-    }),
-    makeProduct(41, "SKU-4001", "Steel Pipe 4in 20ft", "Industrial", 85, 58, 320, 50, warehouseNames[1], "piece", supplierNames[2], 7, {
-      description: "Schedule 40 carbon steel pipe, 4-inch nominal diameter, 20-foot lengths. ASTM A53 Grade B for structural, mechanical, and pressure applications.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "IronForge", brandWebsite: "https://www.ironforgeindustrial.com", tags: "steel,pipe,structural,heavy-duty"
-    }),
-    makeProduct(42, "SKU-4002", "Safety Gloves BulkPak", "Industrial", 48, 32, 500, 100, warehouseNames[1], "case", supplierNames[2], 5, {
-      description: "Nitrile-coated work gloves with cut-resistant HPPE liner. ANSI A4 cut protection. 144 pairs per case in assorted sizes. Ideal for manufacturing and construction.",
-      imageUrl: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=200&h=200&fit=crop",
-      brand: "SafeGuard Pro", brandWebsite: "https://www.safeguardprosafety.com", tags: "safety,gloves,PPE,cut-resistant"
-    }),
-    makeProduct(43, "SKU-4003", "Lubricant 55gal", "Industrial", 280, 195, 45, 10, warehouseNames[1], "drum", supplierNames[2], 8, {
-      description: "Multi-purpose industrial lubricant, ISO VG 68 viscosity grade, 55-gallon drum. Anti-wear hydraulic oil suitable for industrial machinery, pumps, and compressors.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "IronForge", brandWebsite: "https://www.ironforgeindustrial.com", tags: "lubricant,hydraulic,machinery,maintenance"
-    }),
-    makeProduct(44, "SKU-4004", "Power Drill Set", "Industrial", 125, 85, 120, 20, warehouseNames[1], "set", supplierNames[2], 6, {
-      description: "20V cordless hammer drill/driver kit with brushless motor, 2 lithium-ion batteries, charger, and 50-piece bit set. 1/2-inch chuck, 2-speed gearbox.",
-      imageUrl: "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=200&h=200&fit=crop",
-      brand: "SafeGuard Pro", brandWebsite: "https://www.safeguardprosafety.com", tags: "tools,drill,power,cordless"
-    }),
-    makeProduct(45, "SKU-4005", "Safety Goggles 50pk", "Industrial", 65, 42, 380, 60, warehouseNames[1], "pack", supplierNames[2], 4, {
-      description: "ANSI Z87.1+ rated splash and impact safety goggles with indirect ventilation. Anti-fog coating, fits over most prescription glasses. 50 per box.",
-      imageUrl: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=200&h=200&fit=crop",
-      brand: "SafeGuard Pro", brandWebsite: "https://www.safeguardprosafety.com", tags: "safety,goggles,PPE,eye-protection"
-    }),
-    makeProduct(46, "SKU-4006", "Steel Sheet 4x8", "Industrial", 95, 65, 200, 30, warehouseNames[1], "sheet", supplierNames[2], 7, {
-      description: "Hot-rolled mild steel sheet, 16-gauge thickness, 4x8 foot panels. A36 grade for fabrication, welding, and general manufacturing applications.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "IronForge", brandWebsite: "https://www.ironforgeindustrial.com", tags: "steel,sheet,fabrication,manufacturing"
-    }),
-    makeProduct(47, "SKU-4007", "Welding Wire 33lb", "Industrial", 55, 38, 250, 40, warehouseNames[1], "spool", supplierNames[2], 6, {
-      description: "ER70S-6 MIG welding wire, 0.035-inch diameter, 33-lb spool. Copper-coated for smooth feeding and excellent arc stability. AWS certified for carbon steel welding.",
-      imageUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop",
-      brand: "IronForge", brandWebsite: "https://www.ironforgeindustrial.com", tags: "welding,wire,MIG,fabrication"
-    }),
-    makeProduct(48, "SKU-4008", "Industrial Cleaner 5gal", "Chemicals", 42, 28, 180, 30, warehouseNames[2], "bucket", supplierNames[3], 5, {
-      description: "Heavy-duty alkaline degreaser and cleaner, 5-gallon pail. Concentrated formula dilutes up to 1:20. Effective on grease, oil, and grime in industrial environments.",
-      imageUrl: "https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=200&h=200&fit=crop",
-      brand: "ChemTech Solutions", brandWebsite: "https://www.chemtechsolutions.com", tags: "cleaner,degreaser,industrial,chemical"
-    }),
-    makeProduct(49, "SKU-4009", "Sanitizer Bulk 5gal", "Chemicals", 35, 22, 220, 40, warehouseNames[2], "bucket", supplierNames[3], 4, {
-      description: "EPA-registered quaternary ammonium sanitizer concentrate, 5-gallon pail. Food-contact surface safe when diluted. Effective against bacteria, viruses, and fungi.",
-      imageUrl: "https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=200&h=200&fit=crop",
-      brand: "ChemTech Solutions", brandWebsite: "https://www.chemtechsolutions.com", tags: "sanitizer,disinfectant,food-safe,chemical"
-    }),
-    makeProduct(50, "SKU-4010", "Solvent Grade A 5gal", "Chemicals", 58, 40, 90, 15, warehouseNames[2], "bucket", supplierNames[3], 7, {
-      description: "High-purity acetone solvent, ACS reagent grade, 5-gallon pail. Used for surface preparation, cleaning, and thinning in manufacturing and laboratory settings.",
-      imageUrl: "https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=200&h=200&fit=crop",
-      brand: "ChemTech Solutions", brandWebsite: "https://www.chemtechsolutions.com", tags: "solvent,acetone,cleaning,chemical"
-    }),
+    makeProduct(1, "SKU-1001", "Organic Olive Oil 5L", "Food & Beverage", 42, 28, 340, 50, warehouseNames[0], "bottle", supplierNames[0], 7),
+    makeProduct(2, "SKU-1002", "Brown Rice 25kg", "Food & Beverage", 38, 24, 520, 100, warehouseNames[1], "bag", supplierNames[0], 5),
+    makeProduct(3, "SKU-1003", "Sea Salt 10kg", "Food & Beverage", 15, 9, 890, 150, warehouseNames[0], "bag", supplierNames[2], 4),
+    makeProduct(4, "SKU-1004", "All-Purpose Flour 50lb", "Food & Beverage", 22, 14, 1200, 200, warehouseNames[1], "bag", supplierNames[2], 3),
+    makeProduct(5, "SKU-1005", "Sugar Granulated 50lb", "Food & Beverage", 28, 18, 980, 150, warehouseNames[1], "bag", supplierNames[2], 3),
+    makeProduct(6, "SKU-1006", "Butter Unsalted 36ct", "Food & Beverage", 96, 72, 180, 40, warehouseNames[0], "case", supplierNames[0], 5),
+    makeProduct(7, "SKU-1007", "EVOO Premium 5L", "Food & Beverage", 58, 42, 210, 30, warehouseNames[0], "bottle", supplierNames[4], 10),
+    makeProduct(8, "SKU-1008", "Pasta Variety Case", "Food & Beverage", 36, 24, 450, 80, warehouseNames[0], "case", supplierNames[4], 8),
+    makeProduct(9, "SKU-1009", "San Marzano Tomatoes 6ct", "Food & Beverage", 28, 19, 380, 60, warehouseNames[0], "case", supplierNames[4], 8),
+    makeProduct(10, "SKU-1010", "Frozen Shrimp 10lb", "Food & Beverage", 85, 62, 150, 30, warehouseNames[2], "box", supplierNames[0], 7),
+    makeProduct(11, "SKU-1011", "Salmon Fillet Case", "Food & Beverage", 125, 95, 80, 20, warehouseNames[2], "case", supplierNames[0], 3),
+    makeProduct(12, "SKU-1012", "Premium Steak Cuts Case", "Food & Beverage", 245, 185, 65, 15, warehouseNames[2], "case", supplierNames[3], 5),
+    makeProduct(13, "SKU-1013", "Mixed Greens Case", "Food & Beverage", 32, 22, 200, 50, warehouseNames[0], "case", supplierNames[0], 2),
+    makeProduct(14, "SKU-1014", "Avocados 48ct", "Food & Beverage", 48, 34, 300, 80, warehouseNames[0], "case", supplierNames[0], 3),
+    makeProduct(15, "SKU-1015", "Organic Quinoa 25lb", "Food & Beverage", 56, 38, 180, 30, warehouseNames[0], "bag", supplierNames[4], 10),
+    makeProduct(16, "SKU-1016", "Chia Seeds 10lb", "Food & Beverage", 42, 28, 220, 40, warehouseNames[0], "bag", supplierNames[4], 10),
+    makeProduct(17, "SKU-1017", "Coconut Oil 5gal", "Food & Beverage", 68, 48, 140, 25, warehouseNames[0], "bucket", supplierNames[4], 12),
+    makeProduct(18, "SKU-1018", "Frozen Pizza Cases", "Food & Beverage", 52, 36, 400, 80, warehouseNames[2], "case", supplierNames[2], 5),
+    makeProduct(19, "SKU-1019", "Ice Cream 3gal", "Food & Beverage", 38, 26, 250, 50, warehouseNames[2], "tub", supplierNames[2], 4),
+    makeProduct(20, "SKU-1020", "Sparkling Water 24pk", "Food & Beverage", 18, 11, 600, 100, warehouseNames[1], "pack", supplierNames[3], 5),
+    makeProduct(21, "SKU-2001", "Portland Cement 50lb", "Building Materials", 12, 7, 2400, 500, warehouseNames[1], "bag", supplierNames[2], 3),
+    makeProduct(22, "SKU-2002", "Rebar #4 20ft", "Building Materials", 18, 11, 1800, 300, warehouseNames[1], "piece", supplierNames[2], 5),
+    makeProduct(23, "SKU-2003", "Plywood 4x8 3/4in", "Building Materials", 48, 32, 900, 150, warehouseNames[1], "sheet", supplierNames[2], 4),
+    makeProduct(24, "SKU-2004", "Concrete Mix 80lb", "Building Materials", 8, 5, 3200, 600, warehouseNames[1], "bag", supplierNames[2], 3),
+    makeProduct(25, "SKU-2005", "Drywall 4x8 1/2in", "Building Materials", 14, 9, 1500, 300, warehouseNames[1], "sheet", supplierNames[2], 4),
+    makeProduct(26, "SKU-2006", "Insulation R-13 Roll", "Building Materials", 42, 28, 650, 100, warehouseNames[1], "roll", supplierNames[2], 5),
+    makeProduct(27, "SKU-2007", "PVC Pipe 4in 10ft", "Building Materials", 15, 9, 1100, 200, warehouseNames[1], "piece", supplierNames[3], 4),
+    makeProduct(28, "SKU-2008", "Wire 14ga 500ft", "Building Materials", 65, 45, 320, 50, warehouseNames[1], "spool", supplierNames[3], 6),
+    makeProduct(29, "SKU-2009", "Lumber 2x4 8ft", "Building Materials", 6, 4, 4500, 800, warehouseNames[1], "piece", supplierNames[2], 3),
+    makeProduct(30, "SKU-2010", "Roofing Shingles Bundle", "Building Materials", 35, 24, 800, 150, warehouseNames[1], "bundle", supplierNames[2], 5),
+    makeProduct(31, "SKU-3001", "Corrugated Box 12x12", "Packaging", 2, 1, 8500, 2000, warehouseNames[0], "each", supplierNames[3], 4),
+    makeProduct(32, "SKU-3002", "Stretch Wrap 18in", "Packaging", 28, 18, 450, 80, warehouseNames[0], "roll", supplierNames[3], 5),
+    makeProduct(33, "SKU-3003", "Kraft Paper Rolls", "Packaging", 35, 22, 12, 50, warehouseNames[0], "roll", supplierNames[3], 5),
+    makeProduct(34, "SKU-3004", "Bubble Wrap 24in 250ft", "Packaging", 42, 28, 280, 50, warehouseNames[0], "roll", supplierNames[3], 6),
+    makeProduct(35, "SKU-3005", "Packing Tape 6pk", "Packaging", 12, 7, 950, 200, warehouseNames[0], "pack", supplierNames[3], 3),
+    makeProduct(36, "SKU-3006", "Poly Bags 1000ct", "Packaging", 22, 14, 600, 100, warehouseNames[0], "box", supplierNames[3], 4),
+    makeProduct(37, "SKU-3007", "Aluminum Trays 50ct", "Packaging", 28, 18, 420, 80, warehouseNames[0], "case", supplierNames[3], 5),
+    makeProduct(38, "SKU-3008", "Food Containers 500ct", "Packaging", 38, 25, 350, 60, warehouseNames[0], "case", supplierNames[3], 5),
+    makeProduct(39, "SKU-3009", "Shrink Film 18in", "Packaging", 32, 21, 280, 50, warehouseNames[0], "roll", supplierNames[3], 6),
+    makeProduct(40, "SKU-3010", "Disposable Plates 500ct", "Packaging", 45, 30, 200, 40, warehouseNames[0], "case", supplierNames[3], 5),
+    makeProduct(41, "SKU-4001", "Steel Pipe 4in 20ft", "Industrial", 85, 58, 320, 50, warehouseNames[1], "piece", supplierNames[2], 7),
+    makeProduct(42, "SKU-4002", "Safety Gloves BulkPak", "Industrial", 48, 32, 500, 100, warehouseNames[1], "case", supplierNames[2], 5),
+    makeProduct(43, "SKU-4003", "Lubricant 55gal", "Industrial", 280, 195, 45, 10, warehouseNames[1], "drum", supplierNames[2], 8),
+    makeProduct(44, "SKU-4004", "Power Drill Set", "Industrial", 125, 85, 120, 20, warehouseNames[1], "set", supplierNames[2], 6),
+    makeProduct(45, "SKU-4005", "Safety Goggles 50pk", "Industrial", 65, 42, 380, 60, warehouseNames[1], "pack", supplierNames[2], 4),
+    makeProduct(46, "SKU-4006", "Steel Sheet 4x8", "Industrial", 95, 65, 200, 30, warehouseNames[1], "sheet", supplierNames[2], 7),
+    makeProduct(47, "SKU-4007", "Welding Wire 33lb", "Industrial", 55, 38, 250, 40, warehouseNames[1], "spool", supplierNames[2], 6),
+    makeProduct(48, "SKU-4008", "Industrial Cleaner 5gal", "Chemicals", 42, 28, 180, 30, warehouseNames[2], "bucket", supplierNames[3], 5),
+    makeProduct(49, "SKU-4009", "Sanitizer Bulk 5gal", "Chemicals", 35, 22, 220, 40, warehouseNames[2], "bucket", supplierNames[3], 4),
+    makeProduct(50, "SKU-4010", "Solvent Grade A 5gal", "Chemicals", 58, 40, 90, 15, warehouseNames[2], "bucket", supplierNames[3], 7),
   ];
 
-  // Generate remaining 50 products deterministically (matching the mock pattern)
-  // The original uses Math.random(), we use a seeded pseudo-random
   function seededRandom(seed: number): number {
     const x = Math.sin(seed * 9301 + 49297) * 49297;
     return x - Math.floor(x);
   }
-
-  const autoBrands: Record<string, { brand: string; brandWebsite: string }> = {
-    "Food & Beverage": { brand: "Valley Harvest", brandWebsite: "https://www.valleyharvestgrains.com" },
-    "Building Materials": { brand: "Titan Build", brandWebsite: "https://www.titanbuildmaterials.com" },
-    "Packaging": { brand: "PackRight", brandWebsite: "https://www.packrightusa.com" },
-    "Industrial": { brand: "IronForge", brandWebsite: "https://www.ironforgeindustrial.com" },
-    "Chemicals": { brand: "ChemTech Solutions", brandWebsite: "https://www.chemtechsolutions.com" },
-    "Agriculture": { brand: "GreenGrow", brandWebsite: "https://www.greengrowag.com" },
-    "Paper Goods": { brand: "EcoPaper Co.", brandWebsite: "https://www.ecopaperco.com" },
-  };
 
   for (let i = 0; i < 50; i++) {
     const idx = i + 51;
@@ -367,15 +146,8 @@ async function main() {
     const stock = Math.round(seededRandom(idx + 1000) * 1500);
     const rp = Math.round(stock * 0.15) + 10;
     const ltd = 3 + Math.round(seededRandom(idx + 2000) * 8);
-    const brandInfo = autoBrands[cat] || { brand: "Generic", brandWebsite: "" };
     productsData.push(
-      makeProduct(idx, `SKU-${5000 + idx}`, `Product ${idx} - ${cat}`, cat, price, wp, stock, rp, wh, "each", sup, ltd, {
-        description: `Wholesale ${cat.toLowerCase()} product for commercial and industrial distribution. Bulk quantity available with volume pricing for qualified accounts.`,
-        imageUrl: null as any,
-        brand: brandInfo.brand,
-        brandWebsite: brandInfo.brandWebsite,
-        tags: cat.toLowerCase().replace(/ & /g, ",").replace(/ /g, "-"),
-      })
+      makeProduct(idx, `SKU-${5000 + idx}`, `Product ${idx} - ${cat}`, cat, price, wp, stock, rp, wh, "each", sup, ltd)
     );
   }
 
@@ -422,7 +194,6 @@ async function main() {
   console.log(`Seeded ${customersData.length} customers with contacts.`);
 
   // ─── ORDERS & ORDER ITEMS ─────────────────────────────────────────────────
-  // The mock data generates 55 orders procedurally. We replicate the logic with deterministic values.
   const customerIds = customersData.map((c) => c.id);
   const customerNames = customersData.map((c) => c.name);
   const orderStatuses = ["Draft", "Confirmed", "Processing", "Picking", "Packed", "Shipped", "Delivered", "Returned"];
@@ -449,7 +220,6 @@ async function main() {
     const custId = customerIds[custIndex];
     const custName = customerNames[custIndex];
 
-    // Deterministic item selection using seeded random
     const numItems = 2 + Math.floor(seededRandom(i * 7 + 1) * 4);
     const items = [];
     for (let j = 0; j < numItems; j++) {

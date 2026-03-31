@@ -30,6 +30,7 @@ import {
   Zap,
   TrendingUp,
   Building2,
+  ShoppingBag,
 } from "lucide-react";
 
 interface NavItem {
@@ -64,7 +65,8 @@ const navigation: NavItem[] = [
       { label: "Fulfillment", href: "/orders/fulfillment", icon: Truck },
     ],
   },
-  { label: "Inventory", href: "/inventory", icon: Boxes },
+  { label: "Products & Stock", href: "/inventory", icon: Boxes },
+  { label: "Products", href: "/products", icon: ShoppingBag },
   { label: "Suppliers", href: "/suppliers", icon: Building2 },
   { label: "Customers", href: "/customers", icon: Users },
   {

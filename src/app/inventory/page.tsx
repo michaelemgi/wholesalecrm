@@ -10,7 +10,8 @@ import {
   Pencil, Check, Upload, FileSpreadsheet, CheckCircle2,
   AlertCircle, ClipboardCheck, Loader2, Users, Building2,
   ShoppingCart, ArrowRight, Tag, Download, Plus, FileUp,
-  ArrowLeftRight, Trash2, FileText,
+  ArrowLeftRight, Trash2, FileText, ExternalLink, Lightbulb,
+  FlaskConical, Rocket, Beaker, Star, Globe, Image as ImageIcon,
 } from "lucide-react";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import DateRangeFilter, { DateRange, isInRange } from "@/components/DateRangeFilter";
@@ -223,21 +224,54 @@ function ProductDetailPanel({ product, onClose, onUpdatePrice }: {
       >
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-6 py-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-heading text-lg font-bold text-text-primary">{product.name}</h2>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs font-mono text-text-muted">{product.sku}</span>
-                <span className="text-xs text-text-muted">{product.category}</span>
-                <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium", statusConfig[product.status].bg, statusConfig[product.status].text)}>
-                  {product.status}
-                </span>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex gap-4">
+              {/* Product Image */}
+              {product.imageUrl ? (
+                <img src={product.imageUrl} alt={product.name} className="h-16 w-16 rounded-xl object-cover border border-border shrink-0" />
+              ) : (
+                <div className="h-16 w-16 rounded-xl bg-surface-hover flex items-center justify-center border border-border shrink-0">
+                  <Package className="h-6 w-6 text-text-muted" />
+                </div>
+              )}
+              <div>
+                <h2 className="font-heading text-lg font-bold text-text-primary">{product.name}</h2>
+                {product.brand && (
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs text-primary font-medium">{product.brand}</span>
+                    {product.brandWebsite && (
+                      <a href={product.brandWebsite} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs font-mono text-text-muted">{product.sku}</span>
+                  <span className="text-xs text-text-muted">{product.category}</span>
+                  <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium", statusConfig[product.status].bg, statusConfig[product.status].text)}>
+                    {product.status}
+                  </span>
+                </div>
+                {product.tags && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {product.tags.split(",").map((tag: string) => (
+                      <span key={tag} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors">
               <X className="h-5 w-5" />
             </button>
           </div>
+          {/* Description */}
+          {product.description && (
+            <p className="text-xs text-text-secondary mt-3 leading-relaxed">{product.description}</p>
+          )}
 
           {/* Sub-tabs */}
           <div className="flex items-center gap-1 mt-4 border-b border-border -mb-4 -mx-6 px-6">
@@ -624,7 +658,7 @@ function ProductDetailPanel({ product, onClose, onUpdatePrice }: {
 }
 
 // --- Product Catalog Tab ---
-function ProductCatalogTab({ products, onSelectProduct }: { products: Product[]; onSelectProduct: (p: Product) => void }) {
+function ProductCatalogTab({ products, onSelectProduct, brandFilter, onClearBrandFilter }: { products: Product[]; onSelectProduct: (p: Product) => void; brandFilter?: string | null; onClearBrandFilter?: () => void }) {
   const [view, setView] = useState<"table" | "grid">("table");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -634,13 +668,16 @@ function ProductCatalogTab({ products, onSelectProduct }: { products: Product[];
 
   const filtered = useMemo(() => {
     let result = products;
+    if (brandFilter) {
+      result = result.filter(p => (p.brand || "Unbranded") === brandFilter);
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
     }
     if (category !== "All") result = result.filter(p => p.category === category);
     return result;
-  }, [products, search, category]);
+  }, [products, search, category, brandFilter]);
 
   const sortedProducts = useMemo(() => {
     const arr = [...filtered];
@@ -682,6 +719,16 @@ function ProductCatalogTab({ products, onSelectProduct }: { products: Product[];
 
   return (
     <div className="space-y-4">
+      {/* Brand filter indicator */}
+      {brandFilter && (
+        <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+          <Building2 className="h-4 w-4 text-primary" />
+          <span className="text-sm text-text-secondary">Showing products from <span className="font-semibold text-primary">{brandFilter}</span></span>
+          <button onClick={onClearBrandFilter} className="ml-auto p-1 rounded hover:bg-primary/10 text-text-muted hover:text-primary transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
@@ -735,7 +782,7 @@ function ProductCatalogTab({ products, onSelectProduct }: { products: Product[];
               <thead>
                 <tr className="border-b border-border bg-surface/50">
                   <SortHeader field="sku" label="SKU" />
-                  <SortHeader field="name" label="Product Name" />
+                  <SortHeader field="name" label="Product" />
                   <SortHeader field="category" label="Category" />
                   <th className="py-3 px-4 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Unit Price</th>
                   <SortHeader field="wholesalePrice" label="Wholesale" align="right" />
@@ -755,7 +802,21 @@ function ProductCatalogTab({ products, onSelectProduct }: { products: Product[];
                     className="border-b border-border/50 hover:bg-surface-hover/50 transition-colors cursor-pointer"
                   >
                     <td className="py-3 px-4 font-mono text-xs text-text-muted">{p.sku}</td>
-                    <td className="py-3 px-4 font-medium text-text-primary">{p.name}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name} className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
+                        ) : (
+                          <div className="h-9 w-9 rounded-lg bg-surface-hover flex items-center justify-center border border-border shrink-0">
+                            <Package className="h-4 w-4 text-text-muted" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-text-primary text-sm">{p.name}</p>
+                          {p.brand && <p className="text-[10px] text-primary/70">{p.brand}</p>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-text-secondary">{p.category}</td>
                     <td className="py-3 px-4 text-right text-text-secondary">{formatCurrency(p.unitPrice)}</td>
                     <td className="py-3 px-4 text-right text-text-primary font-medium">{formatCurrency(p.wholesalePrice)}</td>
@@ -786,12 +847,21 @@ function ProductCatalogTab({ products, onSelectProduct }: { products: Product[];
               onClick={() => onSelectProduct(p)}
               className="glass-card p-4 hover:border-border-light transition-colors cursor-pointer"
             >
+
+              {p.imageUrl ? (
+                <img src={p.imageUrl} alt={p.name} className="w-full h-28 object-cover rounded-lg mb-3 border border-border" />
+              ) : (
+                <div className="w-full h-28 rounded-lg mb-3 bg-surface-hover flex items-center justify-center border border-border">
+                  <Package className="h-8 w-8 text-text-muted" />
+                </div>
+              )}
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="text-sm font-medium text-text-primary">{p.name}</p>
+                  {p.brand && <p className="text-[10px] text-primary/70 mt-0.5">{p.brand}</p>}
                   <p className="text-xs text-text-muted font-mono mt-0.5">{p.sku}</p>
                 </div>
-                <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", statusConfig[p.status].bg, statusConfig[p.status].text)}>
+                <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ml-2", statusConfig[p.status].bg, statusConfig[p.status].text)}>
                   {p.status}
                 </span>
               </div>
@@ -2199,6 +2269,7 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [form, setForm] = useState({
     sku: "",
     name: "",
+    description: "",
     category: "Food & Beverage",
     unitPrice: 0,
     wholesalePrice: 0,
@@ -2209,6 +2280,10 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
     supplier: "Global Supply Co.",
     leadTimeDays: 7,
     weight: 0,
+    imageUrl: "",
+    brand: "",
+    brandWebsite: "",
+    tags: "",
   });
 
   const productCategories = ["Food & Beverage", "Building Materials", "Packaging", "Industrial", "Chemicals", "Agriculture", "Paper Goods"];
@@ -2224,7 +2299,7 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
     setSaving(true);
     try {
       const wp = Number(form.wholesalePrice) || 0;
-      const body = {
+      const body: any = {
         sku: form.sku.trim(),
         name: form.name.trim(),
         category: form.category,
@@ -2244,6 +2319,11 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
         leadTimeDays: Number(form.leadTimeDays) || 0,
         status: Number(form.stockLevel) === 0 ? "Out of Stock" : Number(form.stockLevel) <= Number(form.reorderPoint) ? "Low Stock" : "Active",
       };
+      if (form.description.trim()) body.description = form.description.trim();
+      if (form.imageUrl.trim()) body.imageUrl = form.imageUrl.trim();
+      if (form.brand.trim()) body.brand = form.brand.trim();
+      if (form.brandWebsite.trim()) body.brandWebsite = form.brandWebsite.trim();
+      if (form.tags.trim()) body.tags = form.tags.trim();
       const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error("Failed to create product");
       onCreated();
@@ -2358,6 +2438,37 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
               <input type="number" value={form.weight} onChange={e => update("weight", e.target.value)} placeholder="0" className={inputClass} />
             </div>
           </div>
+
+          {/* Separator */}
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-3">Brand & Details</p>
+          </div>
+
+          <div>
+            <label className={labelClass}>Description</label>
+            <textarea value={form.description} onChange={e => update("description", e.target.value)} placeholder="Product description..." rows={3} className={cn(inputClass, "resize-none")} />
+          </div>
+
+          <div>
+            <label className={labelClass}>Image URL</label>
+            <input type="text" value={form.imageUrl} onChange={e => update("imageUrl", e.target.value)} placeholder="https://images.unsplash.com/..." className={inputClass} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Brand</label>
+              <input type="text" value={form.brand} onChange={e => update("brand", e.target.value)} placeholder="Brand name" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Brand Website</label>
+              <input type="text" value={form.brandWebsite} onChange={e => update("brandWebsite", e.target.value)} placeholder="https://www.brand.com" className={inputClass} />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Tags (comma-separated)</label>
+            <input type="text" value={form.tags} onChange={e => update("tags", e.target.value)} placeholder="organic, premium, bulk" className={inputClass} />
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
@@ -2373,13 +2484,373 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
   );
 }
 
+// --- Brands Tab ---
+function BrandsTab({ products, onSelectBrand }: { products: Product[]; onSelectBrand: (brand: string) => void }) {
+  const brandData = useMemo(() => {
+    const map: Record<string, { brand: string; brandWebsite: string; imageUrl: string | null; productCount: number; totalValue: number; categories: Set<string> }> = {};
+    products.forEach(p => {
+      const brand = p.brand || "Unbranded";
+      if (!map[brand]) {
+        map[brand] = {
+          brand,
+          brandWebsite: p.brandWebsite || "",
+          imageUrl: p.imageUrl || null,
+          productCount: 0,
+          totalValue: 0,
+          categories: new Set(),
+        };
+      }
+      map[brand].productCount++;
+      map[brand].totalValue += p.stockLevel * p.wholesalePrice;
+      map[brand].categories.add(p.category);
+      if (!map[brand].imageUrl && p.imageUrl) map[brand].imageUrl = p.imageUrl;
+    });
+    return Object.values(map).sort((a, b) => b.totalValue - a.totalValue);
+  }, [products]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-text-muted">{brandData.length} brands across your catalog</p>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {brandData.map((b, i) => (
+          <motion.div
+            key={b.brand}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            onClick={() => onSelectBrand(b.brand)}
+            className="glass-card p-5 hover:border-primary/30 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              {b.imageUrl ? (
+                <img src={b.imageUrl} alt={b.brand} className="h-12 w-12 rounded-xl object-cover border border-border" />
+              ) : (
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center border border-border">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-text-primary truncate group-hover:text-primary transition-colors">{b.brand}</p>
+                <p className="text-[10px] text-text-muted truncate">{Array.from(b.categories).join(", ")}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-text-muted">Products</span>
+                <span className="font-medium text-text-primary">{b.productCount}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-text-muted">Inventory Value</span>
+                <span className="font-medium text-emerald-400">{formatCurrency(b.totalValue)}</span>
+              </div>
+            </div>
+            {b.brandWebsite && (
+              <a
+                href={b.brandWebsite}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 mt-3 text-[10px] text-primary/60 hover:text-primary transition-colors"
+              >
+                <Globe className="h-3 w-3" /> {b.brandWebsite.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+              </a>
+            )}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- NPD & Innovation Tab ---
+function NPDTab() {
+  const [activeSection, setActiveSection] = useState<"pipeline" | "ideas" | "recipes">("pipeline");
+
+  const pipelineStages = ["Concept", "Research", "Testing", "Launch Ready", "Launched"];
+  const stageColors: Record<string, { bg: string; text: string; border: string }> = {
+    Concept: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20" },
+    Research: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
+    Testing: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
+    "Launch Ready": { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+    Launched: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
+  };
+
+  const pipelineItems = [
+    { id: "npd-1", name: "Organic Hemp Protein Bar", stage: "Testing", targetMarket: "Health-conscious consumers", estimatedCost: 2.40, potentialRevenue: 5.99, owner: "Sarah Mitchell", progress: 72, notes: "Third batch testing complete. Adjusting sweetness level." },
+    { id: "npd-2", name: "Zero-Waste Packaging Line", stage: "Research", targetMarket: "Eco-conscious businesses", estimatedCost: 0.85, potentialRevenue: 2.50, owner: "David Lee", progress: 35, notes: "Evaluating compostable materials from 3 suppliers." },
+    { id: "npd-3", name: "Cold Brew Coffee Concentrate", stage: "Launch Ready", targetMarket: "Cafes and restaurants", estimatedCost: 8.50, potentialRevenue: 24.99, owner: "Mike Thompson", progress: 95, notes: "Final packaging approved. Launch date set for April 15." },
+    { id: "npd-4", name: "Premium Wagyu Beef Jerky", stage: "Concept", targetMarket: "Premium snack market", estimatedCost: 12.00, potentialRevenue: 34.99, owner: "Sarah Mitchell", progress: 10, notes: "Initial concept approved by product committee." },
+    { id: "npd-5", name: "Plant-Based Cheese Alternative", stage: "Testing", targetMarket: "Vegan/vegetarian food service", estimatedCost: 3.20, potentialRevenue: 8.99, owner: "Alex Rivera", progress: 58, notes: "Taste panel feedback: 4.2/5 rating. Improving melt properties." },
+    { id: "npd-6", name: "Artisan Hot Sauce Collection", stage: "Launched", targetMarket: "Specialty food retailers", estimatedCost: 1.80, potentialRevenue: 7.99, owner: "David Lee", progress: 100, notes: "Successfully launched in 45 accounts. Reorder rate: 68%." },
+    { id: "npd-7", name: "Sustainable Bamboo Utensil Set", stage: "Research", targetMarket: "Catering and events", estimatedCost: 0.45, potentialRevenue: 1.99, owner: "Jennifer Clark", progress: 28, notes: "Sourcing bamboo suppliers with FSC certification." },
+    { id: "npd-8", name: "Keto-Friendly Bread Mix", stage: "Concept", targetMarket: "Health-focused bakeries", estimatedCost: 4.50, potentialRevenue: 12.99, owner: "Mike Thompson", progress: 15, notes: "R&D exploring almond flour and psyllium husk base." },
+  ];
+
+  const innovationIdeas = [
+    { id: "idea-1", title: "AI-Powered Inventory Forecasting", description: "Use machine learning to predict demand patterns and automatically adjust reorder points based on seasonal trends and customer behavior.", targetMarket: "Internal operations", estimatedCost: 50000, potentialRevenue: 200000, status: "Under Review", votes: 12 },
+    { id: "idea-2", title: "Subscription Box Service", description: "Monthly curated box of trending wholesale products for small business owners. Test new products and build loyalty.", targetMarket: "SMB customers", estimatedCost: 15000, potentialRevenue: 180000, status: "Approved", votes: 18 },
+    { id: "idea-3", title: "Private Label Organic Line", description: "Develop our own brand of organic staples (flour, sugar, oils) to capture higher margins in the growing organic wholesale market.", targetMarket: "Health food stores", estimatedCost: 75000, potentialRevenue: 500000, status: "In Progress", votes: 24 },
+    { id: "idea-4", title: "Flash-Frozen Meal Prep Kits", description: "Pre-portioned ingredient kits for restaurant kitchens. Reduces prep time by 40% and food waste by 25%.", targetMarket: "Restaurant chains", estimatedCost: 35000, potentialRevenue: 320000, status: "Submitted", votes: 8 },
+    { id: "idea-5", title: "Blockchain Supply Chain Tracking", description: "Implement farm-to-table traceability for all produce and meat products. Differentiate with full transparency.", targetMarket: "Premium restaurants", estimatedCost: 120000, potentialRevenue: 90000, status: "Submitted", votes: 5 },
+  ];
+
+  const recipes = [
+    { id: "recipe-1", name: "Mediterranean Power Bowl", ingredients: ["Organic Quinoa", "EVOO Premium", "Mixed Greens", "Avocados", "Sea Salt"], method: "Toast quinoa, dress greens with EVOO and lemon, top with sliced avocado and cherry tomatoes.", linkedProducts: ["SKU-1015", "SKU-1007", "SKU-1013", "SKU-1014", "SKU-1003"], status: "Finalized", costPerServing: 3.45 },
+    { id: "recipe-2", name: "Artisan Pizza Dough", ingredients: ["All-Purpose Flour", "Organic Olive Oil", "Sea Salt", "Sugar Granulated"], method: "Combine flour, salt, sugar, and yeast. Add water and oil. Knead 10 minutes, proof 24 hours cold.", linkedProducts: ["SKU-1004", "SKU-1001", "SKU-1003", "SKU-1005"], status: "Testing", costPerServing: 0.85 },
+    { id: "recipe-3", name: "Cajun Shrimp Pasta", ingredients: ["Frozen Shrimp", "Pasta Variety Case", "Butter Unsalted", "San Marzano Tomatoes"], method: "Saute shrimp in butter with cajun spice, add crushed tomatoes and cream, toss with cooked penne.", linkedProducts: ["SKU-1010", "SKU-1008", "SKU-1006", "SKU-1009"], status: "Finalized", costPerServing: 6.20 },
+    { id: "recipe-4", name: "Superfood Smoothie Base", ingredients: ["Chia Seeds", "Coconut Oil", "Organic Quinoa"], method: "Blend soaked chia with coconut oil, cooked quinoa, banana, and plant milk. Strain and portion.", linkedProducts: ["SKU-1016", "SKU-1017", "SKU-1015"], status: "In Development", costPerServing: 2.10 },
+  ];
+
+  const ideaStatusConfig: Record<string, { bg: string; text: string }> = {
+    Submitted: { bg: "bg-gray-500/15", text: "text-gray-400" },
+    "Under Review": { bg: "bg-amber-500/15", text: "text-amber-400" },
+    Approved: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
+    "In Progress": { bg: "bg-blue-500/15", text: "text-blue-400" },
+  };
+
+  const recipeStatusConfig: Record<string, { bg: string; text: string }> = {
+    "In Development": { bg: "bg-amber-500/15", text: "text-amber-400" },
+    Testing: { bg: "bg-blue-500/15", text: "text-blue-400" },
+    Finalized: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Section Tabs */}
+      <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 w-fit">
+        {[
+          { key: "pipeline" as const, label: "Product Pipeline", icon: Rocket },
+          { key: "ideas" as const, label: "Innovation Ideas", icon: Lightbulb },
+          { key: "recipes" as const, label: "Recipe Lab", icon: FlaskConical },
+        ].map(section => (
+          <button
+            key={section.key}
+            onClick={() => setActiveSection(section.key)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+              activeSection === section.key ? "bg-primary text-white" : "text-text-muted hover:text-text-secondary"
+            )}
+          >
+            <section.icon className="h-4 w-4" />
+            {section.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Pipeline Section */}
+      {activeSection === "pipeline" && (
+        <motion.div key="pipeline" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          {/* Stage progress bar */}
+          <div className="glass-card p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-text-primary">Development Pipeline</h3>
+              <div className="flex items-center gap-4 text-xs text-text-muted">
+                {pipelineStages.map(stage => {
+                  const count = pipelineItems.filter(p => p.stage === stage).length;
+                  return (
+                    <div key={stage} className="flex items-center gap-1.5">
+                      <div className={cn("h-2 w-2 rounded-full", stageColors[stage].bg, stageColors[stage].text.replace("text-", "bg-"))} />
+                      <span>{stage} ({count})</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-surface-hover">
+              {pipelineStages.map(stage => {
+                const count = pipelineItems.filter(p => p.stage === stage).length;
+                const pct = (count / pipelineItems.length) * 100;
+                return (
+                  <div key={stage} className={cn("h-full transition-all", stageColors[stage].text.replace("text-", "bg-"))} style={{ width: `${pct}%` }} />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Pipeline cards grouped by stage */}
+          <div className="grid grid-cols-5 gap-4">
+            {pipelineStages.map(stage => (
+              <div key={stage}>
+                <div className={cn("flex items-center gap-2 mb-3 px-2")}>
+                  <div className={cn("h-2 w-2 rounded-full", stageColors[stage].text.replace("text-", "bg-"))} />
+                  <span className={cn("text-xs font-semibold uppercase tracking-wider", stageColors[stage].text)}>{stage}</span>
+                  <span className="text-[10px] text-text-muted ml-auto">{pipelineItems.filter(p => p.stage === stage).length}</span>
+                </div>
+                <div className="space-y-3">
+                  {pipelineItems.filter(p => p.stage === stage).map((item, i) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={cn("glass-card p-4 border", stageColors[stage].border)}
+                    >
+                      <p className="text-sm font-medium text-text-primary mb-1">{item.name}</p>
+                      <p className="text-[10px] text-text-muted mb-3">{item.targetMarket}</p>
+                      {/* Progress bar */}
+                      <div className="mb-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] text-text-muted">Progress</span>
+                          <span className={cn("text-[10px] font-medium", stageColors[stage].text)}>{item.progress}%</span>
+                        </div>
+                        <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full", stageColors[stage].text.replace("text-", "bg-"))} style={{ width: `${item.progress}%` }} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-text-muted">
+                        <span>Cost: {formatCurrency(item.estimatedCost)}</span>
+                        <span>Rev: {formatCurrency(item.potentialRevenue)}</span>
+                      </div>
+                      <p className="text-[10px] text-text-muted/60 mt-2 italic">{item.notes}</p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-[7px] font-bold text-primary">
+                          {item.owner.split(" ").map(n => n[0]).join("")}
+                        </div>
+                        <span className="text-[10px] text-text-muted">{item.owner}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Innovation Ideas */}
+      {activeSection === "ideas" && (
+        <motion.div key="ideas" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-text-muted">{innovationIdeas.length} innovation ideas submitted</p>
+            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
+              <Plus className="h-4 w-4" /> Submit Idea
+            </button>
+          </div>
+          <div className="space-y-3">
+            {innovationIdeas.sort((a, b) => b.votes - a.votes).map((idea, i) => (
+              <motion.div
+                key={idea.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="glass-card p-5 hover:border-border-light transition-colors"
+              >
+                <div className="flex gap-4">
+                  {/* Vote count */}
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <button className="p-1 rounded hover:bg-primary/10 text-text-muted hover:text-primary transition-colors">
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <span className="text-lg font-bold text-primary">{idea.votes}</span>
+                    <span className="text-[9px] text-text-muted uppercase">votes</span>
+                  </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h3 className="text-sm font-semibold text-text-primary">{idea.title}</h3>
+                      <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium shrink-0", ideaStatusConfig[idea.status]?.bg, ideaStatusConfig[idea.status]?.text)}>
+                        {idea.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-secondary mb-3">{idea.description}</p>
+                    <div className="flex items-center gap-6 text-xs text-text-muted">
+                      <div><span className="text-text-muted/60">Target:</span> <span className="text-text-secondary">{idea.targetMarket}</span></div>
+                      <div><span className="text-text-muted/60">Est. Cost:</span> <span className="text-amber-400">{formatCurrency(idea.estimatedCost)}</span></div>
+                      <div><span className="text-text-muted/60">Potential Rev:</span> <span className="text-emerald-400">{formatCurrency(idea.potentialRevenue)}</span></div>
+                      <div><span className="text-text-muted/60">ROI:</span> <span className="text-primary font-medium">{((idea.potentialRevenue / idea.estimatedCost - 1) * 100).toFixed(0)}%</span></div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Recipe Lab */}
+      {activeSection === "recipes" && (
+        <motion.div key="recipes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-text-muted">{recipes.length} recipes in development</p>
+            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
+              <Plus className="h-4 w-4" /> New Recipe
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {recipes.map((recipe, i) => (
+              <motion.div
+                key={recipe.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="glass-card p-5 hover:border-border-light transition-colors"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Beaker className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-primary">{recipe.name}</h3>
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium mt-0.5", recipeStatusConfig[recipe.status]?.bg, recipeStatusConfig[recipe.status]?.text)}>
+                        {recipe.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-text-muted">Cost/Serving</p>
+                    <p className="text-sm font-bold text-emerald-400">{formatCurrency(recipe.costPerServing)}</p>
+                  </div>
+                </div>
+
+                {/* Ingredients */}
+                <div className="mb-3">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">Ingredients</p>
+                  <div className="flex flex-wrap gap-1">
+                    {recipe.ingredients.map(ing => (
+                      <span key={ing} className="inline-flex items-center rounded-md bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary border border-border">
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Method */}
+                <div className="mb-3">
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Method</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">{recipe.method}</p>
+                </div>
+
+                {/* Linked Products */}
+                <div>
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Linked SKUs</p>
+                  <div className="flex flex-wrap gap-1">
+                    {recipe.linkedProducts.map(sku => (
+                      <span key={sku} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary">
+                        {sku}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Page ---
 export default function InventoryPage() {
   const { data: apiProducts = [], mutate: mutateProducts } = useSWR<Product[]>('/api/products', fetcher);
   const { data: mockCustomers = [] } = useSWR<any[]>('/api/customers', fetcher);
   const { data: mockOrders = [] } = useSWR<any[]>('/api/orders', fetcher);
 
-  const [activeTab, setActiveTab] = useState<"catalog" | "stock" | "prices" | "stocktake">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "stock" | "prices" | "stocktake" | "brands" | "npd">("catalog");
+  const [brandFilter, setBrandFilter] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -2484,6 +2955,8 @@ export default function InventoryPage() {
     { key: "stock" as const, label: "Stock Levels" },
     { key: "prices" as const, label: "Price Books" },
     { key: "stocktake" as const, label: "Stocktake" },
+    { key: "brands" as const, label: "Brands" },
+    { key: "npd" as const, label: "NPD & Innovation" },
   ];
 
   return (
@@ -2552,7 +3025,7 @@ export default function InventoryPage() {
       {/* Tab Content */}
       {activeTab === "catalog" && (
         <motion.div key="catalog" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          <ProductCatalogTab products={products} onSelectProduct={handleSelectProduct} />
+          <ProductCatalogTab products={products} onSelectProduct={handleSelectProduct} brandFilter={brandFilter} onClearBrandFilter={() => setBrandFilter(null)} />
         </motion.div>
       )}
       {activeTab === "stock" && (
@@ -2568,6 +3041,16 @@ export default function InventoryPage() {
       {activeTab === "stocktake" && (
         <motion.div key="stocktake" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <StocktakeTab products={products} />
+        </motion.div>
+      )}
+      {activeTab === "brands" && (
+        <motion.div key="brands" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          <BrandsTab products={products} onSelectBrand={(brand) => { setBrandFilter(brand); setActiveTab("catalog"); }} />
+        </motion.div>
+      )}
+      {activeTab === "npd" && (
+        <motion.div key="npd" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          <NPDTab />
         </motion.div>
       )}
 
