@@ -5,7 +5,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "wholesaleos-secret-key-change-in-production"
 );
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/setup"];
 
 const ROLE_ROUTE_ACCESS: Record<string, string[]> = {
   "/settings": ["ADMIN"],
