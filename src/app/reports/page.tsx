@@ -14,6 +14,7 @@ import { exportToCSV } from "@/lib/export";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import DateRangeFilter, { DateRange, isInRange, isMonthInRange, parseMonthLabel } from "@/components/DateRangeFilter";
+import ScheduledReports from "./ScheduledReports";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend,
@@ -1609,27 +1610,8 @@ export default function ReportsPage() {
       )}
 
       {tab === "scheduled" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-          {scheduledReports.map((sr, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="glass-card p-5 flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-light">
-                <Clock className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-text-primary">{sr.name}</p>
-                <p className="text-xs text-text-muted mt-0.5">{sr.frequency}</p>
-                <p className="text-xs text-text-muted">Recipients: {sr.recipients}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-text-muted">Next run</p>
-                <p className="text-sm font-medium text-text-primary">{sr.nextRun}</p>
-              </div>
-              <button className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary hover:bg-surface-hover transition-colors">Edit</button>
-            </motion.div>
-          ))}
-          <button className="w-full py-3 rounded-lg border-2 border-dashed border-border text-sm text-text-muted hover:border-border-light hover:text-text-secondary transition-colors">
-            + Schedule New Report
-          </button>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <ScheduledReports />
         </motion.div>
       )}
     </div>
