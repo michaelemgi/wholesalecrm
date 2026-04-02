@@ -20,6 +20,7 @@ import BulkReportModal, { BulkReportConfig } from "@/components/BulkReportModal"
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { Product } from "@/types";
+import PriceChangeAlerts from "./PriceChangeAlerts";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -1387,6 +1388,11 @@ function PriceBooksTab({ products, onSelectProduct, onUpdatePrice }: { products:
           </div>
         </div>
       )}
+
+      {/* Price Change Alerts Section */}
+      <div className="mt-8 pt-6 border-t border-border">
+        <PriceChangeAlerts />
+      </div>
     </div>
   );
 }

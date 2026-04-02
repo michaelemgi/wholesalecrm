@@ -66,7 +66,6 @@ const navigation: NavItem[] = [
     ],
   },
   { label: "Products & Stock", href: "/inventory", icon: Boxes },
-  { label: "Products", href: "/products", icon: ShoppingBag },
   { label: "Suppliers", href: "/suppliers", icon: Building2 },
   { label: "Customers", href: "/customers", icon: Users },
   {

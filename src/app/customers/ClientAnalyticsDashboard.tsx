@@ -18,6 +18,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend,
 } from "recharts";
 import type { Customer, Order, Product } from "@/types";
+import GapAnalysis from "./GapAnalysis";
 
 // ─── Utilities ────────────────────────────────────────────────────
 type CompareMode = "previous" | "lastYear" | "custom" | "off";
@@ -514,7 +515,7 @@ export default function ClientAnalyticsDashboard({
       {analyticsView === "overview" ? (
         <OverviewAnalytics data={overviewData} hasCompare={hasCompare} onSelectClient={selectClient} />
       ) : clientData && selectedClient ? (
-        <ClientDetailAnalytics client={selectedClient} data={clientData} hasCompare={hasCompare} />
+        <ClientDetailAnalytics client={selectedClient} data={clientData} hasCompare={hasCompare} orders={orders} products={products} />
       ) : (
         <div className="text-center py-20 text-text-muted">Select a client to view analytics</div>
       )}
@@ -768,10 +769,11 @@ function OverviewAnalytics({ data, hasCompare, onSelectClient }: {
 }
 
 // ─── CLIENT DETAIL ANALYTICS VIEW ─────────────────────────────────
-function ClientDetailAnalytics({ client, data, hasCompare }: {
-  client: Customer; data: any; hasCompare: boolean;
+function ClientDetailAnalytics({ client, data, hasCompare, orders, products }: {
+  client: Customer; data: any; hasCompare: boolean; orders: Order[]; products: Product[];
 }) {
   const [productSort, setProductSort] = useState<"revenue" | "qty" | "change">("revenue");
+  const [detailTab, setDetailTab] = useState<"analytics" | "gap">("analytics");
 
   const sortedProducts = useMemo(() => {
     const arr = [...data.productBreakdown];
@@ -801,6 +803,37 @@ function ClientDetailAnalytics({ client, data, hasCompare }: {
         </div>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-1 border-b border-border">
+        {([
+          { key: "analytics" as const, label: "Performance Analytics", icon: BarChart3 },
+          { key: "gap" as const, label: "Gap Analysis", icon: Target },
+        ]).map(tab => {
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setDetailTab(tab.key)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative",
+                detailTab === tab.key ? "text-primary" : "text-text-muted hover:text-text-secondary"
+              )}
+            >
+              <TabIcon className="h-4 w-4" />
+              {tab.label}
+              {detailTab === tab.key && (
+                <motion.div layoutId="client-detail-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {detailTab === "gap" && (
+        <GapAnalysis client={client} orders={orders} products={products} allOrders={orders} />
+      )}
+
+      {detailTab === "analytics" && (<>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KPI
@@ -1008,6 +1041,7 @@ function ClientDetailAnalytics({ client, data, hasCompare }: {
           </table>
         </div>
       </div>
+      </>)}
     </div>
   );
 }
