@@ -18,6 +18,24 @@ export default function PayablesPage() {
   const { data: mockExpenses = [], isLoading } = useSWR<any[]>('/api/finance/expenses', fetcher);
   const { data: mockFinancials = [] } = useSWR<any[]>('/api/finance/monthly', fetcher);
 
+  const [tab, setTab] = useState<"expenses" | "pnl">("expenses");
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const filteredExpenses = dateRange.startDate
+    ? mockExpenses.filter((e: any) => isInRange(e.date, dateRange))
+    : mockExpenses;
+
+  const sortedExpenses = useMemo(() => {
+    return [...filteredExpenses].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      const cmp = typeof aVal === "number" ? aVal - bVal : String(aVal).localeCompare(String(bVal));
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredExpenses, sortField, sortDir]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -45,11 +63,6 @@ export default function PayablesPage() {
     );
   }
 
-  const [tab, setTab] = useState<"expenses" | "pnl">("expenses");
-  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
-  const [sortField, setSortField] = useState<string>("date");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
   const toggleSort = (field: string) => {
     if (sortField === field) {
       setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
@@ -74,19 +87,6 @@ export default function PayablesPage() {
       </span>
     </th>
   );
-
-  const filteredExpenses = dateRange.startDate
-    ? mockExpenses.filter((e: any) => isInRange(e.date, dateRange))
-    : mockExpenses;
-
-  const sortedExpenses = useMemo(() => {
-    return [...filteredExpenses].sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-      const cmp = typeof aVal === "number" ? aVal - bVal : String(aVal).localeCompare(String(bVal));
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filteredExpenses, sortField, sortDir]);
 
   const totalExpenses = filteredExpenses.reduce((s, e) => s + e.amount, 0);
   const pendingTotal = filteredExpenses.filter(e => e.status === "Pending").reduce((s, e) => s + e.amount, 0);

@@ -238,6 +238,101 @@ function simulateInvoiceParse(fileName: string, mockProducts: Product[] = []): {
 export default function PurchaseOrdersPage() {
   const { data: mockProducts = [], isLoading } = useSWR<Product[]>('/api/products', fetcher);
 
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
+  const [posInitialized, setPosInitialized] = useState(false);
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [receivingLines, setReceivingLines] = useState<ReceivingLine[]>([]);
+  const [receiptConfirmed, setReceiptConfirmed] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+
+  // Sort state
+  type SortField = "createdAt" | "poNumber" | "supplier" | "amount" | "status" | "expectedDelivery" | "items";
+  type SortDir = "asc" | "desc";
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Upload invoice state
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadDragging, setUploadDragging] = useState(false);
+  const [uploadProcessing, setUploadProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [parsedInvoice, setParsedInvoice] = useState<ReturnType<typeof simulateInvoiceParse> | null>(null);
+  const [editingInvoiceLines, setEditingInvoiceLines] = useState<ParsedInvoiceLine[]>([]);
+  const [invoiceSupplier, setInvoiceSupplier] = useState("");
+  const [invoiceCreated, setInvoiceCreated] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [productSearchIdx, setProductSearchIdx] = useState<number | null>(null);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+
+  // General PO notes
+  const [receiptNotes, setReceiptNotes] = useState("");
+
+  // POs arriving soon (In Transit with delivery within 3 days)
+  const arrivingPOs = useMemo(() => {
+    const today = new Date("2026-03-28");
+    return purchaseOrders.filter((po) => {
+      if (po.status !== "In Transit" && po.status !== "Confirmed") return false;
+      if (dismissedAlerts.has(po.id)) return false;
+      const delivery = new Date(po.expectedDelivery);
+      const daysUntil = Math.ceil((delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntil <= 5;
+    });
+  }, [purchaseOrders, dismissedAlerts]);
+
+  // Date-filtered POs
+  const filteredPOs = useMemo(() => {
+    if (!dateRange.startDate && !dateRange.endDate) return purchaseOrders;
+    return purchaseOrders.filter((po) => isInRange(po.createdAt, dateRange));
+  }, [purchaseOrders, dateRange]);
+
+  // Sorted POs
+  const sortedPOs = useMemo(() => {
+    const statusOrder = PO_STAGES.reduce((acc, s, i) => ({ ...acc, [s]: i }), {} as Record<string, number>);
+    return [...filteredPOs].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "poNumber":
+          cmp = a.poNumber.localeCompare(b.poNumber);
+          break;
+        case "supplier":
+          cmp = a.supplier.localeCompare(b.supplier);
+          break;
+        case "amount":
+          cmp = a.amount - b.amount;
+          break;
+        case "status":
+          cmp = (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0);
+          break;
+        case "expectedDelivery":
+          cmp = a.expectedDelivery.localeCompare(b.expectedDelivery);
+          break;
+        case "items":
+          cmp = a.items - b.items;
+          break;
+        case "createdAt":
+        default:
+          cmp = a.createdAt.localeCompare(b.createdAt);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredPOs, sortField, sortDir]);
+
+  // Receiving summary stats
+  const receivingSummary = useMemo(() => {
+    if (!receivingLines.length) return null;
+    const totalOrdered = receivingLines.reduce((s, l) => s + l.orderedQty, 0);
+    const totalReceived = receivingLines.reduce((s, l) => s + l.receivedQty, 0);
+    const matches = receivingLines.filter((l) => l.status === "match").length;
+    const shorts = receivingLines.filter((l) => l.status === "short").length;
+    const overs = receivingLines.filter((l) => l.status === "over").length;
+    const rejected = receivingLines.filter((l) => l.status === "rejected").length;
+    const originalTotal = receivingLines.reduce((s, l) => s + l.totalLineCost, 0);
+    const adjustedTotal = receivingLines.reduce((s, l) => s + l.unitCost * l.receivedQty, 0);
+    return { totalOrdered, totalReceived, matches, shorts, overs, rejected, originalTotal, adjustedTotal };
+  }, [receivingLines]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -261,20 +356,6 @@ export default function PurchaseOrdersPage() {
       </div>
     );
   }
-
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
-  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
-  const [posInitialized, setPosInitialized] = useState(false);
-  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
-  const [receivingLines, setReceivingLines] = useState<ReceivingLine[]>([]);
-  const [receiptConfirmed, setReceiptConfirmed] = useState(false);
-  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
-
-  // Sort state
-  type SortField = "createdAt" | "poNumber" | "supplier" | "amount" | "status" | "expectedDelivery" | "items";
-  type SortDir = "asc" | "desc";
-  const [sortField, setSortField] = useState<SortField>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -307,19 +388,6 @@ export default function PurchaseOrdersPage() {
     })));
     setPosInitialized(true);
   }
-
-  // Upload invoice state
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadDragging, setUploadDragging] = useState(false);
-  const [uploadProcessing, setUploadProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [parsedInvoice, setParsedInvoice] = useState<ReturnType<typeof simulateInvoiceParse> | null>(null);
-  const [editingInvoiceLines, setEditingInvoiceLines] = useState<ParsedInvoiceLine[]>([]);
-  const [invoiceSupplier, setInvoiceSupplier] = useState("");
-  const [invoiceCreated, setInvoiceCreated] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState("");
-  const [productSearchIdx, setProductSearchIdx] = useState<number | null>(null);
-  const [productSearchQuery, setProductSearchQuery] = useState("");
 
   // Handle file upload
   const handleUploadFile = (fileName: string) => {
@@ -426,18 +494,6 @@ export default function PurchaseOrdersPage() {
     setProductSearchQuery("");
   };
 
-  // POs arriving soon (In Transit with delivery within 3 days)
-  const arrivingPOs = useMemo(() => {
-    const today = new Date("2026-03-28");
-    return purchaseOrders.filter((po) => {
-      if (po.status !== "In Transit" && po.status !== "Confirmed") return false;
-      if (dismissedAlerts.has(po.id)) return false;
-      const delivery = new Date(po.expectedDelivery);
-      const daysUntil = Math.ceil((delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return daysUntil <= 5;
-    });
-  }, [purchaseOrders, dismissedAlerts]);
-
   // Open receiving panel for a PO
   const openReceiving = (po: PurchaseOrder) => {
     setSelectedPO(po);
@@ -487,9 +543,6 @@ export default function PurchaseOrdersPage() {
     setReceivingLines(lines);
     setReceiptNotes("");
   };
-
-  // General PO notes
-  const [receiptNotes, setReceiptNotes] = useState("");
 
   // Update received qty for a line — unit cost stays FIXED (invoice price never changes based on qty)
   const updateReceivedQty = (index: number, newQty: number) => {
@@ -543,45 +596,6 @@ export default function PurchaseOrdersPage() {
     setReceiptConfirmed(true);
   };
 
-  // Date-filtered POs
-  const filteredPOs = useMemo(() => {
-    if (!dateRange.startDate && !dateRange.endDate) return purchaseOrders;
-    return purchaseOrders.filter((po) => isInRange(po.createdAt, dateRange));
-  }, [purchaseOrders, dateRange]);
-
-  // Sorted POs
-  const sortedPOs = useMemo(() => {
-    const statusOrder = PO_STAGES.reduce((acc, s, i) => ({ ...acc, [s]: i }), {} as Record<string, number>);
-    return [...filteredPOs].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "poNumber":
-          cmp = a.poNumber.localeCompare(b.poNumber);
-          break;
-        case "supplier":
-          cmp = a.supplier.localeCompare(b.supplier);
-          break;
-        case "amount":
-          cmp = a.amount - b.amount;
-          break;
-        case "status":
-          cmp = (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0);
-          break;
-        case "expectedDelivery":
-          cmp = a.expectedDelivery.localeCompare(b.expectedDelivery);
-          break;
-        case "items":
-          cmp = a.items - b.items;
-          break;
-        case "createdAt":
-        default:
-          cmp = a.createdAt.localeCompare(b.createdAt);
-          break;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filteredPOs, sortField, sortDir]);
-
   // Stats
   const totalPOs = filteredPOs.length;
   const outstandingAmount = filteredPOs
@@ -595,20 +609,6 @@ export default function PurchaseOrdersPage() {
   sortedPOs.forEach((po) => {
     if (posByStage[po.status]) posByStage[po.status].push(po);
   });
-
-  // Receiving summary stats
-  const receivingSummary = useMemo(() => {
-    if (!receivingLines.length) return null;
-    const totalOrdered = receivingLines.reduce((s, l) => s + l.orderedQty, 0);
-    const totalReceived = receivingLines.reduce((s, l) => s + l.receivedQty, 0);
-    const matches = receivingLines.filter((l) => l.status === "match").length;
-    const shorts = receivingLines.filter((l) => l.status === "short").length;
-    const overs = receivingLines.filter((l) => l.status === "over").length;
-    const rejected = receivingLines.filter((l) => l.status === "rejected").length;
-    const originalTotal = receivingLines.reduce((s, l) => s + l.totalLineCost, 0);
-    const adjustedTotal = receivingLines.reduce((s, l) => s + l.unitCost * l.receivedQty, 0);
-    return { totalOrdered, totalReceived, matches, shorts, overs, rejected, originalTotal, adjustedTotal };
-  }, [receivingLines]);
 
   const kpis = [
     { label: "Total POs", value: totalPOs.toString(), icon: FileText, color: "text-primary", bg: "bg-primary/10" },

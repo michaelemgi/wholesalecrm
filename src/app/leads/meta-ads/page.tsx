@@ -60,6 +60,9 @@ const flowSteps = [
 export default function MetaAdsPage() {
   const { data: mockMetaCampaigns = [], isLoading } = useSWR<MetaCampaign[]>('/api/campaigns/meta', fetcher);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -84,9 +87,6 @@ export default function MetaAdsPage() {
       </div>
     );
   }
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
 
   const campaigns = mockMetaCampaigns;
   const totalSpend = campaigns.reduce((sum, c) => sum + c.spend, 0);

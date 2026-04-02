@@ -2,33 +2,27 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Building2, Users, Puzzle, Mail, Bell, Key, CreditCard, Database, Palette, CheckCircle2, Plus, ExternalLink, Shield, ChevronRight, Eye, EyeOff, Pencil, Trash2, Copy, X, Lock, Unlock } from "lucide-react";
+import { Settings, Building2, Users, Puzzle, Mail, Bell, Key, CreditCard, Database, Palette, CheckCircle2, Plus, ExternalLink, Shield, ChevronRight, Eye, EyeOff, Pencil, Trash2, Copy, X, Lock, Unlock, Loader2, AlertCircle, Unplug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 
-const integrations = [
-  { name: "Meta Ads", status: "connected", icon: "📱", description: "Facebook & Instagram advertising" },
-  { name: "Instantly", status: "connected", icon: "📧", description: "Cold email automation" },
-  { name: "Google Ads", status: "available", icon: "🔍", description: "Search & display advertising" },
-  { name: "QuickBooks", status: "available", icon: "📊", description: "Accounting & bookkeeping" },
-  { name: "Xero", status: "available", icon: "💰", description: "Cloud accounting" },
-  { name: "Shopify", status: "available", icon: "🛒", description: "E-commerce platform" },
-  { name: "WooCommerce", status: "available", icon: "🏪", description: "WordPress e-commerce" },
-  { name: "Mailgun", status: "available", icon: "✉️", description: "Email delivery service" },
-  { name: "SendGrid", status: "available", icon: "📬", description: "Email API" },
-  { name: "Twilio", status: "available", icon: "💬", description: "SMS & voice" },
-  { name: "Slack", status: "available", icon: "💡", description: "Team communication" },
-  { name: "Zapier", status: "available", icon: "⚡", description: "Workflow automation" },
-  { name: "Stripe", status: "available", icon: "💳", description: "Payment processing" },
-  { name: "PayPal", status: "available", icon: "🅿️", description: "Online payments" },
-  { name: "ShipStation", status: "available", icon: "📦", description: "Shipping management" },
-  { name: "Google Sheets", status: "available", icon: "📗", description: "Spreadsheet sync" },
-  { name: "WhatsApp Business", status: "available", icon: "📱", description: "Business messaging" },
-  { name: "Sage", status: "connected", icon: "📗", description: "Accounting, ERP & business management via webhook" },
-];
+// Field labels for integration credential forms
+const FIELD_LABELS: Record<string, string> = {
+  appId: "App ID", appSecret: "App Secret", accessToken: "Access Token",
+  apiKey: "API Key", workspaceId: "Workspace ID",
+  clientId: "Client ID", clientSecret: "Client Secret", developerToken: "Developer Token", customerId: "Customer ID",
+  realmId: "Realm ID", tenantId: "Tenant ID",
+  shopDomain: "Shop Domain", apiSecret: "API Secret",
+  siteUrl: "Site URL", consumerKey: "Consumer Key", consumerSecret: "Consumer Secret",
+  domain: "Domain", accountSid: "Account SID", authToken: "Auth Token", phoneNumber: "Phone Number",
+  botToken: "Bot Token", webhookUrl: "Webhook URL", channel: "Channel",
+  publishableKey: "Publishable Key", secretKey: "Secret Key", webhookSecret: "Webhook Secret",
+  environment: "Environment", serviceAccountKey: "Service Account Key", spreadsheetId: "Spreadsheet ID",
+  phoneNumberId: "Phone Number ID", businessId: "Business ID", companyId: "Company ID",
+};
 
 const tabs = [
   { id: "company", label: "Company Profile", icon: Building2 },
@@ -608,6 +602,249 @@ function RolesPanel() {
   );
 }
 
+// ─── Integrations Panel ────────────────────────────────────────────────
+
+interface IntegrationItem {
+  name: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  category: string;
+  fields: string[];
+  status: string;
+  connectedAt: string | null;
+  connectedBy: string | null;
+  lastSyncAt: string | null;
+  errorMessage: string | null;
+  config: Record<string, any>;
+  id: string | null;
+}
+
+function IntegrationsPanel() {
+  const { data: integrations, mutate } = useSWR<IntegrationItem[]>("/api/integrations", fetcher);
+  const [connectModal, setConnectModal] = useState<IntegrationItem | null>(null);
+  const [configureModal, setConfigureModal] = useState<IntegrationItem | null>(null);
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+
+  const openConnect = (int: IntegrationItem) => {
+    setFormValues({});
+    setShowSecrets({});
+    setConnectModal(int);
+  };
+
+  const openConfigure = (int: IntegrationItem) => {
+    // Pre-fill with masked values from config
+    const masked = int.config?._masked || {};
+    setFormValues(masked);
+    setShowSecrets({});
+    setConfigureModal(int);
+  };
+
+  const handleConnect = async () => {
+    if (!connectModal) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: connectModal.name, credentials: formValues }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`${connectModal.displayName} connected successfully`);
+      setConnectModal(null);
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to connect");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!configureModal) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: configureModal.name, credentials: formValues }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`${configureModal.displayName} updated`);
+      setConfigureModal(null);
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnect = async (int: IntegrationItem) => {
+    setDisconnecting(int.name);
+    try {
+      const res = await fetch(`/api/integrations?name=${int.name}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`${int.displayName} disconnected`);
+      mutate();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disconnect");
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
+  const renderModal = (int: IntegrationItem, isUpdate: boolean) => (
+    <AnimatePresence>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => isUpdate ? setConfigureModal(null) : setConnectModal(null)}>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="glass-card w-full max-w-lg mx-4 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{int.icon}</span>
+              <div>
+                <h3 className="font-heading text-lg font-semibold text-text-primary">{isUpdate ? "Configure" : "Connect"} {int.displayName}</h3>
+                <p className="text-xs text-text-muted">{int.description}</p>
+              </div>
+            </div>
+            <button onClick={() => isUpdate ? setConfigureModal(null) : setConnectModal(null)} className="p-1 rounded-lg hover:bg-surface-hover transition-colors">
+              <X className="h-5 w-5 text-text-muted" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {int.fields.map(field => (
+              <div key={field}>
+                <label className="block text-xs font-medium text-text-secondary mb-1">{FIELD_LABELS[field] || field}</label>
+                <div className="relative">
+                  <input
+                    type={showSecrets[field] ? "text" : "password"}
+                    value={formValues[field] || ""}
+                    onChange={e => setFormValues(prev => ({ ...prev, [field]: e.target.value }))}
+                    placeholder={`Enter ${FIELD_LABELS[field] || field}`}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-text-primary font-mono outline-none focus:border-primary"
+                  />
+                  <button type="button" onClick={() => setShowSecrets(p => ({ ...p, [field]: !p[field] }))} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text-primary">
+                    {showSecrets[field] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {isUpdate && (
+            <div className="mt-4 p-3 rounded-lg bg-surface-hover/50 border border-border/50">
+              <p className="text-[11px] text-text-muted">Connected {int.connectedAt ? new Date(int.connectedAt).toLocaleDateString() : "—"} by {int.connectedBy || "—"}</p>
+              {int.lastSyncAt && <p className="text-[11px] text-text-muted">Last sync: {new Date(int.lastSyncAt).toLocaleString()}</p>}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 mt-5">
+            <button onClick={() => isUpdate ? setConfigureModal(null) : setConnectModal(null)} className="flex-1 py-2 rounded-lg border border-border text-sm font-medium text-text-secondary hover:bg-surface-hover transition-colors">
+              Cancel
+            </button>
+            {isUpdate && (
+              <button onClick={() => { setConfigureModal(null); handleDisconnect(int); }} className="py-2 px-4 rounded-lg border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5">
+                <Unplug className="h-3.5 w-3.5" /> Disconnect
+              </button>
+            )}
+            <button onClick={isUpdate ? handleUpdate : handleConnect} disabled={saving} className="flex-1 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isUpdate ? "Save Changes" : "Connect"}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+
+  if (!integrations) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
+      </motion.div>
+    );
+  }
+
+  const connected = integrations.filter(i => i.status === "connected");
+  const available = integrations.filter(i => i.status !== "connected");
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {/* Connected integrations */}
+      {connected.length > 0 && (
+        <div>
+          <h3 className="font-heading text-lg font-semibold text-text-primary mb-3">Connected ({connected.length})</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {connected.map((int, i) => (
+              <motion.div key={int.name} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="glass-card p-4 hover:border-border-light transition-colors border-emerald-500/20">
+                <div className="flex items-start justify-between mb-2">
+                  <span className="text-2xl">{int.icon}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-500/20 text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3" /> Connected
+                  </span>
+                </div>
+                <h4 className="text-sm font-semibold text-text-primary">{int.displayName}</h4>
+                <p className="text-xs text-text-muted mt-0.5">{int.description}</p>
+                {int.lastSyncAt && (
+                  <p className="text-[10px] text-text-muted mt-1.5">Synced {new Date(int.lastSyncAt).toLocaleDateString()}</p>
+                )}
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => openConfigure(int)} className="flex-1 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors">
+                    Configure
+                  </button>
+                  <button onClick={() => handleDisconnect(int)} disabled={disconnecting === int.name} className="py-1.5 px-3 rounded-lg border border-red-500/20 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+                    {disconnecting === int.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unplug className="h-3 w-3" />}
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Available integrations */}
+      <div>
+        <h3 className="font-heading text-lg font-semibold text-text-primary mb-3">
+          {connected.length > 0 ? "Available" : "Integration Marketplace"} ({available.length})
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          {available.map((int, i) => (
+            <motion.div key={int.name} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="glass-card p-4 hover:border-border-light transition-colors">
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-2xl">{int.icon}</span>
+                {int.status === "error" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-red-500/20 text-red-400">
+                    <AlertCircle className="h-3 w-3" /> Error
+                  </span>
+                ) : (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-surface-hover text-text-muted">Available</span>
+                )}
+              </div>
+              <h4 className="text-sm font-semibold text-text-primary">{int.displayName}</h4>
+              <p className="text-xs text-text-muted mt-0.5">{int.description}</p>
+              {int.errorMessage && <p className="text-[10px] text-red-400 mt-1">{int.errorMessage}</p>}
+              <button onClick={() => openConnect(int)} className="mt-3 w-full py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium transition-colors">
+                Connect
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Connect Modal */}
+      {connectModal && renderModal(connectModal, false)}
+      {/* Configure Modal */}
+      {configureModal && renderModal(configureModal, true)}
+    </motion.div>
+  );
+}
+
 // ─── Main Settings Page ──────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -997,32 +1234,7 @@ export default function SettingsPage() {
 
           {activeTab === "roles" && <RolesPanel />}
 
-          {activeTab === "integrations" && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <h3 className="font-heading text-lg font-semibold text-text-primary">Integration Marketplace</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {integrations.map((int, i) => (
-                  <motion.div key={int.name} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="glass-card p-4 hover:border-border-light transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-2xl">{int.icon}</span>
-                      {int.status === "connected" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-500/20 text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" /> Connected
-                        </span>
-                      ) : (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-surface-hover text-text-muted">Available</span>
-                      )}
-                    </div>
-                    <h4 className="text-sm font-semibold text-text-primary">{int.name}</h4>
-                    <p className="text-xs text-text-muted mt-0.5">{int.description}</p>
-                    <button className={cn("mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors", int.status === "connected" ? "border border-border text-text-secondary hover:bg-surface-hover" : "bg-primary hover:bg-primary-hover text-white")}>
-                      {int.status === "connected" ? "Configure" : "Connect"}
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {activeTab === "integrations" && <IntegrationsPanel />}
 
           {activeTab === "billing" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">

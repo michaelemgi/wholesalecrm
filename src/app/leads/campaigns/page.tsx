@@ -32,30 +32,6 @@ function StatusBadge({ status }: { status: EmailCampaign["status"] }) {
 export default function CampaignsPage() {
   const { data: mockEmailCampaigns = [], isLoading } = useSWR<EmailCampaign[]>('/api/campaigns/email', fetcher);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-8 w-52 bg-zinc-800 rounded animate-pulse" />
-            <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse" />
-          </div>
-          <div className="h-10 w-36 bg-zinc-800 rounded-lg animate-pulse" />
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <div className="space-y-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   type SortField = "name" | "status" | "sent" | "opened" | "replied" | "openRate" | "replyRate" | "bounceRate" | "positiveReplyRate" | "totalContacts";
   type SortDir = "asc" | "desc";
 
@@ -64,24 +40,6 @@ export default function CampaignsPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
   const [sortField, setSortField] = useState<SortField>("sent");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  function SortHeader({ field, label, align = "left", className = "" }: { field: SortField; label: string; align?: "left" | "right"; className?: string }) {
-    const active = sortField === field;
-    return (
-      <th
-        className={cn("px-5 py-3.5 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-text-primary transition-colors", align === "right" ? "text-right" : "text-left", className)}
-        onClick={() => {
-          if (active) setSortDir(sortDir === "asc" ? "desc" : "asc");
-          else { setSortField(field); setSortDir("desc"); }
-        }}
-      >
-        <span className={cn("inline-flex items-center gap-1", align === "right" && "justify-end")}>
-          {label}
-          {active ? (sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
-        </span>
-      </th>
-    );
-  }
 
   const campaigns = mockEmailCampaigns;
   const activeCampaigns = campaigns.filter((c) => c.status === "Active");
@@ -127,6 +85,48 @@ export default function CampaignsPage() {
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [filteredCampaigns, sortField, sortDir]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-52 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-36 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function SortHeader({ field, label, align = "left", className = "" }: { field: SortField; label: string; align?: "left" | "right"; className?: string }) {
+    const active = sortField === field;
+    return (
+      <th
+        className={cn("px-5 py-3.5 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-text-primary transition-colors", align === "right" ? "text-right" : "text-left", className)}
+        onClick={() => {
+          if (active) setSortDir(sortDir === "asc" ? "desc" : "asc");
+          else { setSortField(field); setSortDir("desc"); }
+        }}
+      >
+        <span className={cn("inline-flex items-center gap-1", align === "right" && "justify-end")}>
+          {label}
+          {active ? (sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+        </span>
+      </th>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 min-h-screen">

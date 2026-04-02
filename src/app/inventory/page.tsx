@@ -2860,24 +2860,6 @@ export default function InventoryPage() {
   const { data: mockCustomers = [] } = useSWR<any[]>('/api/customers', fetcher);
   const { data: mockOrders = [] } = useSWR<any[]>('/api/orders', fetcher);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <div className="h-8 w-56 bg-zinc-800 rounded animate-pulse" />
-        <div className="grid grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <div className="space-y-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const [activeTab, setActiveTab] = useState<"catalog" | "stock" | "prices" | "stocktake" | "brands" | "npd">("catalog");
   const [brandFilter, setBrandFilter] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -2886,6 +2868,7 @@ export default function InventoryPage() {
   const [showCreateProductModal, setShowCreateProductModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const productReportConfig: BulkReportConfig = useMemo(() => ({
     title: "Product Report",
@@ -2950,12 +2933,6 @@ export default function InventoryPage() {
     },
   }), [products, mockOrders]);
 
-  if (apiProducts.length > 0 && !initialized) {
-    setProducts(apiProducts);
-    setInitialized(true);
-  }
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
   const handleUpdatePrice = useCallback((productId: string, tier: string, newPrice: number) => {
     setProducts(prev => prev.map(p => {
       if (p.id !== productId) return p;
@@ -2973,6 +2950,29 @@ export default function InventoryPage() {
     const latest = products.find(prod => prod.id === p.id) || p;
     setSelectedProduct(latest);
   }, [products]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 w-56 bg-zinc-800 rounded animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (apiProducts.length > 0 && !initialized) {
+    setProducts(apiProducts);
+    setInitialized(true);
+  }
 
   const totalProducts = products.length;
   const totalStockValue = products.reduce((s, p) => s + p.stockLevel * p.wholesalePrice, 0);

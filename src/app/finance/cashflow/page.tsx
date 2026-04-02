@@ -12,6 +12,8 @@ import DateRangeFilter, { DateRange, isMonthInRange } from "@/components/DateRan
 export default function CashFlowPage() {
   const { data: mockFinancials = [], isLoading } = useSWR<any[]>('/api/finance/monthly', fetcher);
 
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -35,8 +37,6 @@ export default function CashFlowPage() {
       </div>
     );
   }
-
-  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
 
   const filteredFinancials = dateRange.startDate
     ? mockFinancials.filter((f: any) => isMonthInRange(f.month, dateRange))

@@ -39,33 +39,6 @@ const allPaymentStatuses = ["All", "Unpaid", "Partial", "Paid", "Overdue"];
 export default function SalesOrdersPage() {
   const { data: mockOrders = [], mutate: mutateOrders, isLoading } = useSWR<any[]>('/api/orders', fetcher);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
-            <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
-          </div>
-          <div className="flex gap-2">
-            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
-            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <div className="space-y-2">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,6 +145,33 @@ export default function SalesOrdersPage() {
     });
     return arr;
   }, [filteredOrders, sortField, sortDir]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
+            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const totalPages = Math.ceil(sortedOrders.length / perPage);
   const paginatedOrders = sortedOrders.slice(

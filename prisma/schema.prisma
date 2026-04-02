@@ -670,3 +670,20 @@ model Setting {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── INTEGRATIONS ─────────────────────────────────────────────────────────────
+
+model Integration {
+  id           String   @id @default(cuid())
+  name         String   @unique // "meta_ads", "quickbooks", "stripe", etc.
+  displayName  String   // "Meta Ads", "QuickBooks", etc.
+  status       String   @default("disconnected") // "connected" | "disconnected" | "error"
+  apiKey       String?  // encrypted/masked API key or token
+  config       String   @default("{}") // JSON — endpoint URLs, scopes, webhook URLs, etc.
+  connectedAt  DateTime?
+  connectedBy  String?  // user who connected it
+  lastSyncAt   DateTime?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

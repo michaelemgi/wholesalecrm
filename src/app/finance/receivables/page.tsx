@@ -336,6 +336,33 @@ function InvoiceDetailPanel({ invoice, onClose, onMarkPaid }: {
 export default function ReceivablesPage() {
   const { data: apiInvoices = [], isLoading } = useSWR<Invoice[]>('/api/finance/invoices', fetcher);
 
+  const [filter, setFilter] = useState("all");
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesInitialized, setInvoicesInitialized] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
+  const [sortField, setSortField] = useState<"invoiceNumber" | "customerName" | "amount" | "dueDate" | "status">("dueDate");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  const dateFiltered = dateRange.startDate
+    ? invoices.filter(i => isInRange(i.issuedDate, dateRange))
+    : invoices;
+  const filtered = filter === "all" ? dateFiltered : dateFiltered.filter(i => i.status === filter);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "amount") {
+        cmp = a.amount - b.amount;
+      } else {
+        const aVal = a[sortField] ?? "";
+        const bVal = b[sortField] ?? "";
+        cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortField, sortDir]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -363,41 +390,14 @@ export default function ReceivablesPage() {
     );
   }
 
-  const [filter, setFilter] = useState("all");
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [invoicesInitialized, setInvoicesInitialized] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
-  const [sortField, setSortField] = useState<"invoiceNumber" | "customerName" | "amount" | "dueDate" | "status">("dueDate");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
   if (apiInvoices.length > 0 && !invoicesInitialized) {
     setInvoices(apiInvoices);
     setInvoicesInitialized(true);
   }
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const totalOutstanding = invoices.filter(i => i.status !== "Paid" && i.status !== "Void").reduce((s, i) => s + (i.amount - i.paidAmount), 0);
   const overdueTotal = invoices.filter(i => i.status === "Overdue").reduce((s, i) => s + i.amount, 0);
   const paidThisMonth = invoices.filter(i => i.status === "Paid").reduce((s, i) => s + i.amount, 0);
-
-  const dateFiltered = dateRange.startDate
-    ? invoices.filter(i => isInRange(i.issuedDate, dateRange))
-    : invoices;
-  const filtered = filter === "all" ? dateFiltered : dateFiltered.filter(i => i.status === filter);
-
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      if (sortField === "amount") {
-        cmp = a.amount - b.amount;
-      } else {
-        const aVal = a[sortField] ?? "";
-        const bVal = b[sortField] ?? "";
-        cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filtered, sortField, sortDir]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {

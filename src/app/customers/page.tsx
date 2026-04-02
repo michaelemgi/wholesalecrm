@@ -1061,24 +1061,6 @@ export default function CustomersPage() {
   const { data: mockTeam = [] } = useSWR<{ id: string; name: string; role: string }[]>('/api/team', fetcher);
   const { data: mockProducts = [] } = useSWR<Product[]>('/api/products', fetcher);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <div className="h-8 w-64 bg-zinc-800 rounded animate-pulse" />
-        <div className="grid grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("All");
   const [regionFilter, setRegionFilter] = useState<string>("All");
@@ -1150,7 +1132,6 @@ export default function CustomersPage() {
     },
   }), [mockCustomers, mockOrders]);
 
-  const tiers = ["All", "Enterprise", "Mid-Market", "SMB"];
   const regions = useMemo(() => ["All", ...Array.from(new Set(mockCustomers.map((c: any) => c.region)))], [mockCustomers]);
   const industries = useMemo(() => ["All", ...Array.from(new Set(mockCustomers.map((c: any) => c.industry)))], [mockCustomers]);
 
@@ -1191,6 +1172,26 @@ export default function CustomersPage() {
     });
     return arr;
   }, [filtered, sortField, sortDir]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 w-64 bg-zinc-800 rounded animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const tiers = ["All", "Enterprise", "Mid-Market", "SMB"];
 
   function SortHeader({ field, label, align }: { field: string; label: string; align?: string }) {
     const active = sortField === field;
