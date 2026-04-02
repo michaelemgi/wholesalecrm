@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, productSchema } from "@/lib/validation";
+import { parsePagination, paginatedResponse, parseSearch, logRequest } from "@/lib/api-utils";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const status = searchParams.get("status");
+    logRequest(request);
+    const url = new URL(request.url);
+    const hasPagination = url.searchParams.has("page");
+    const search = parseSearch(request);
+    const category = url.searchParams.get("category");
+    const status = url.searchParams.get("status");
 
     const where: any = {};
     if (search) {
@@ -17,6 +21,20 @@ export async function GET(request: NextRequest) {
     }
     if (category) where.category = category;
     if (status) where.status = status;
+
+    if (hasPagination) {
+      const pagination = parsePagination(request);
+      const [products, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: pagination.skip,
+          take: pagination.limit,
+        }),
+        prisma.product.count({ where }),
+      ]);
+      return paginatedResponse(products, total, pagination);
+    }
 
     const products = await prisma.product.findMany({
       where,
@@ -32,10 +50,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const product = await prisma.product.create({ data: body });
+    const v = validateBody(productSchema, body);
+    if (!v.success) return v.response;
+    const product = await prisma.product.create({ data: v.data });
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error("Failed to create product:", error);
-    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    return apiError("Failed to create product", 500);
   }
 }

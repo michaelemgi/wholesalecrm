@@ -105,7 +105,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function DashboardPage() {
-  const { data: mockFinancials = [] } = useSWR<any[]>('/api/finance/monthly', fetcher);
+  const { data: mockFinancials = [], isLoading } = useSWR<any[]>('/api/finance/monthly', fetcher);
   const { data: mockOrders = [] } = useSWR<any[]>('/api/orders', fetcher);
   const { data: mockLeads = [] } = useSWR<any[]>('/api/leads', fetcher);
   const { data: mockDeals = [] } = useSWR<any[]>('/api/pipeline', fetcher);
@@ -113,6 +113,29 @@ export default function DashboardPage() {
   const { data: mockTeam = [] } = useSWR<any[]>('/api/team', fetcher);
 
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "Last 30 Days" });
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-40 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-28 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="h-80 bg-zinc-800 rounded-lg animate-pulse" />
+          <div className="h-80 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   const filteredOrders = dateRange.startDate
     ? mockOrders.filter((o: any) => isInRange(o.createdAt, dateRange))

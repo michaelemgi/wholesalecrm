@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, productSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -25,11 +26,13 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(productSchema.partial(), body);
+    if (!v.success) return v.response;
     const product = await prisma.product.update({ where: { id }, data: body });
     return NextResponse.json(product);
   } catch (error) {
     console.error("Failed to update product:", error);
-    return NextResponse.json({ error: "Failed to update product" }, { status: 500 });
+    return apiError("Failed to update product", 500);
   }
 }
 

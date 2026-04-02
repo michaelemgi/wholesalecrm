@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, orderSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -28,6 +29,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(orderSchema.partial(), body);
+    if (!v.success) return v.response;
     const { items, ...updateData } = body;
 
     const order = await prisma.order.update({
@@ -38,7 +41,7 @@ export async function PUT(
     return NextResponse.json(order);
   } catch (error) {
     console.error("Failed to update order:", error);
-    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+    return apiError("Failed to update order", 500);
   }
 }
 

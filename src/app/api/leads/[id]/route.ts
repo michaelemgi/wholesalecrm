@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, leadSchema } from "@/lib/validation";
 
 function transformLead(l: any) {
   return {
@@ -33,6 +34,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(leadSchema.partial(), body);
+    if (!v.success) return v.response;
 
     if (body.tags) body.tags = JSON.stringify(body.tags);
     if (body.enrichedData) body.enrichedData = JSON.stringify(body.enrichedData);
@@ -41,7 +44,7 @@ export async function PUT(
     return NextResponse.json(transformLead(lead));
   } catch (error) {
     console.error("Failed to update lead:", error);
-    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+    return apiError("Failed to update lead", 500);
   }
 }
 

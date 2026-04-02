@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, Building2, Users, Puzzle, Mail, Bell, Key, CreditCard, Database, Palette, CheckCircle2, Plus, ExternalLink, Shield, ChevronRight, Eye, EyeOff, Pencil, Trash2, Copy, X, Lock, Unlock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 const integrations = [
   { name: "Meta Ads", status: "connected", icon: "📱", description: "Facebook & Instagram advertising" },
@@ -39,17 +43,6 @@ const tabs = [
   { id: "whitelabel", label: "White Label", icon: Palette },
 ];
 
-const teamUsers = [
-  { name: "Adam Groogan", email: "adam@wholesale-co.com", role: "Admin", department: "Executive", status: "Active", initials: "AG" },
-  { name: "Sarah Mitchell", email: "sarah@wholesale-co.com", role: "Sales Manager", department: "Sales", status: "Active", initials: "SM" },
-  { name: "Mike Thompson", email: "mike@wholesale-co.com", role: "Sales Rep", department: "Sales", status: "Active", initials: "MT" },
-  { name: "David Lee", email: "david@wholesale-co.com", role: "Sales Manager", department: "Sales", status: "Active", initials: "DL" },
-  { name: "Alex Rivera", email: "alex@wholesale-co.com", role: "Sales Rep", department: "Sales", status: "Active", initials: "AR" },
-  { name: "Rachel Green", email: "rachel@wholesale-co.com", role: "Operations", department: "Operations", status: "Active", initials: "RG" },
-  { name: "Lisa Wang", email: "lisa@wholesale-co.com", role: "Operations", department: "Operations", status: "Active", initials: "LW" },
-  { name: "Tom Bradley", email: "tom@wholesale-co.com", role: "Read Only", department: "Finance", status: "Active", initials: "TB" },
-  { name: "Nina Patel", email: "nina@wholesale-co.com", role: "Sales Rep", department: "Sales", status: "Invited", initials: "NP" },
-];
 
 // ─── Roles & Permissions Data ────────────────────────────────────────────
 
@@ -619,6 +612,102 @@ function RolesPanel() {
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("company");
+  const { user: currentUser } = useAuth();
+
+  // ─── Company Profile State ────────────────────────────────────────
+  const [companyName, setCompanyName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [companySaving, setCompanySaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then((data: Record<string, string>) => {
+        const parse = (v: string | undefined) => { try { return v ? JSON.parse(v) : ""; } catch { return v || ""; } };
+        setCompanyName(parse(data.companyName));
+        setIndustry(parse(data.industry));
+        setAddress(parse(data.address));
+        setPhone(parse(data.phone));
+        setCompanyEmail(parse(data.email));
+        setWebsite(parse(data.website));
+        setTaxId(parse(data.taxId));
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveCompanySettings = async () => {
+    setCompanySaving(true);
+    try {
+      const fields = { companyName, industry, address, phone, email: companyEmail, website, taxId };
+      for (const [key, value] of Object.entries(fields)) {
+        await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value }),
+        });
+      }
+      toast.success("Company profile saved");
+    } catch {
+      toast.error("Failed to save company profile");
+    } finally {
+      setCompanySaving(false);
+    }
+  };
+
+  // ─── User Management State ────────────────────────────────────────
+  const { data: usersData, mutate: mutateUsers } = useSWR<{ users: Array<{ id: string; email: string; name: string; role: string; avatar: string | null; lastLoginAt: string | null; createdAt: string }> }>("/api/users", fetcher);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteRole, setInviteRole] = useState<"ADMIN" | "MANAGER" | "SALES_REP">("SALES_REP");
+  const [inviteSaving, setInviteSaving] = useState(false);
+
+  const handleInviteUser = async () => {
+    if (!inviteName || !inviteEmail || !invitePassword) { toast.error("Please fill in all fields"); return; }
+    setInviteSaving(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: inviteName, email: inviteEmail, password: invitePassword, role: inviteRole }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to create user");
+        return;
+      }
+      toast.success("User created successfully");
+      setShowInviteModal(false);
+      setInviteName(""); setInviteEmail(""); setInvitePassword(""); setInviteRole("SALES_REP");
+      mutateUsers();
+    } catch {
+      toast.error("Failed to create user");
+    } finally {
+      setInviteSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to delete ${userName}?`)) return;
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to delete user");
+        return;
+      }
+      toast.success("User deleted");
+      mutateUsers();
+    } catch {
+      toast.error("Failed to delete user");
+    }
+  };
 
   // ─── Email Settings State ──────────────────────────────────────────
   const [smtpHost, setSmtpHost] = useState("smtp.wholesale-co.com");
@@ -752,37 +841,43 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Company Name</label>
-                  <input defaultValue="WholesaleOS Inc." className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                  <input value={companyName} onChange={e => setCompanyName(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Industry</label>
-                  <input defaultValue="Wholesale Distribution" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                  <input value={industry} onChange={e => setIndustry(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Address</label>
-                  <input defaultValue="100 Market St, Suite 400" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">City, State, Zip</label>
-                  <input defaultValue="San Francisco, CA 94105" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Tax ID / EIN</label>
-                  <input defaultValue="XX-XXXXXXX" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                  <input value={address} onChange={e => setAddress(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Phone</label>
-                  <input defaultValue="(415) 555-0100" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                  <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Email</label>
+                  <input value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Website</label>
+                  <input value={website} onChange={e => setWebsite(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Tax ID / EIN</label>
+                  <input value={taxId} onChange={e => setTaxId(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
                 </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Company Logo</label>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-xl font-bold text-white">W</div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-xl font-bold text-white">{companyName?.[0] || "W"}</div>
                   <button className="px-4 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-surface-hover transition-colors">Upload Logo</button>
                 </div>
               </div>
-              <button className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors">Save Changes</button>
+              <button onClick={saveCompanySettings} disabled={companySaving} className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors disabled:opacity-50">
+                {companySaving ? "Saving..." : "Save Changes"}
+              </button>
             </motion.div>
           )}
 
@@ -790,8 +885,8 @@ export default function SettingsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-heading text-lg font-semibold text-text-primary">User Management</h3>
-                <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors">
-                  <Plus className="h-4 w-4" /> Add User
+                <button onClick={() => setShowInviteModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors">
+                  <Plus className="h-4 w-4" /> Invite User
                 </button>
               </div>
               <table className="w-full text-sm">
@@ -800,60 +895,103 @@ export default function SettingsPage() {
                     <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">User</th>
                     <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">Email</th>
                     <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">Role</th>
-                    <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">Department</th>
-                    <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">Status</th>
+                    <th className="py-2.5 px-3 text-left text-xs font-medium text-text-muted uppercase">Joined</th>
                     <th className="py-2.5 px-3 text-right text-xs font-medium text-text-muted uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {teamUsers.map(u => (
-                    <tr key={u.email} className="border-b border-border/50 hover:bg-surface-hover/50 transition-colors">
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">{u.initials}</div>
-                          <span className="font-medium text-text-primary">{u.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-text-secondary">{u.email}</td>
-                      <td className="py-2.5 px-3">
-                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium",
-                          u.role === "Admin" ? "bg-red-500/20 text-red-400" :
-                          u.role === "Sales Manager" ? "bg-purple-500/20 text-purple-400" :
-                          u.role === "Sales Rep" ? "bg-blue-500/20 text-blue-400" :
-                          u.role === "Operations" ? "bg-emerald-500/20 text-emerald-400" :
-                          "bg-gray-500/20 text-gray-400"
-                        )}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-text-muted">{u.department}</td>
-                      <td className="py-2.5 px-3">
-                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium",
-                          u.status === "Active" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
-                        )}>{u.status}</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          {u.role !== "Admin" && (
-                            <button className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger-light transition-colors">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {usersData?.users?.map(u => {
+                    const initials = u.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+                    const roleLabel = u.role === "ADMIN" ? "Admin" : u.role === "MANAGER" ? "Manager" : "Sales Rep";
+                    return (
+                      <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover/50 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">{initials}</div>
+                            <span className="font-medium text-text-primary">{u.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-text-secondary">{u.email}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium",
+                            u.role === "ADMIN" ? "bg-red-500/20 text-red-400" :
+                            u.role === "MANAGER" ? "bg-purple-500/20 text-purple-400" :
+                            "bg-blue-500/20 text-blue-400"
+                          )}>
+                            {roleLabel}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {currentUser?.id !== u.id && (
+                              <button onClick={() => handleDeleteUser(u.id, u.name)} className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger-light transition-colors">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!usersData && (
+                    <tr><td colSpan={5} className="py-8 text-center text-sm text-text-muted">Loading users...</td></tr>
+                  )}
+                  {usersData && usersData.users.length === 0 && (
+                    <tr><td colSpan={5} className="py-8 text-center text-sm text-text-muted">No users found</td></tr>
+                  )}
                 </tbody>
               </table>
               <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                <p className="text-xs text-text-muted">{teamUsers.length} users &middot; {teamUsers.filter(u => u.status === "Active").length} active</p>
-                <button onClick={() => {}} className="text-xs text-primary hover:text-primary-hover font-medium transition-colors flex items-center gap-1">
+                <p className="text-xs text-text-muted">{usersData?.users?.length ?? 0} users</p>
+                <button onClick={() => setActiveTab("roles")} className="text-xs text-primary hover:text-primary-hover font-medium transition-colors flex items-center gap-1">
                   <Shield className="h-3.5 w-3.5" /> Manage Roles & Permissions
                 </button>
               </div>
+
+              {/* Invite User Modal */}
+              <AnimatePresence>
+                {showInviteModal && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-card w-full max-w-md p-6 space-y-5 mx-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-heading text-lg font-semibold text-text-primary">Invite User</h3>
+                        <button onClick={() => setShowInviteModal(false)} className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Full Name</label>
+                          <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="John Doe" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Email</label>
+                          <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email" placeholder="john@company.com" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Password</label>
+                          <input value={invitePassword} onChange={e => setInvitePassword(e.target.value)} type="password" placeholder="Minimum 8 characters" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-text-muted uppercase mb-1.5 block">Role</label>
+                          <select value={inviteRole} onChange={e => setInviteRole(e.target.value as "ADMIN" | "MANAGER" | "SALES_REP")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:border-primary">
+                            <option value="SALES_REP">Sales Rep</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="ADMIN">Admin</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button onClick={() => setShowInviteModal(false)} className="px-4 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-surface-hover transition-colors">Cancel</button>
+                        <button onClick={handleInviteUser} disabled={inviteSaving} className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium transition-colors disabled:opacity-50">
+                          {inviteSaving ? "Creating..." : "Create User"}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 

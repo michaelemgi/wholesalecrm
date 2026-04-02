@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, supplierSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -25,11 +26,13 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(supplierSchema.partial(), body);
+    if (!v.success) return v.response;
     const supplier = await prisma.supplier.update({ where: { id }, data: body });
     return NextResponse.json(supplier);
   } catch (error) {
     console.error("Failed to update supplier:", error);
-    return NextResponse.json({ error: "Failed to update supplier" }, { status: 500 });
+    return apiError("Failed to update supplier", 500);
   }
 }
 

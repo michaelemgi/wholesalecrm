@@ -37,8 +37,32 @@ const campaignCalendar = [
 
 export default function MarketingPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: "", endDate: "", label: "All Time" });
-  const { data: mockEmailCampaigns = [] } = useSWR<any[]>('/api/campaigns/email', fetcher);
+  const { data: mockEmailCampaigns = [], isLoading } = useSWR<any[]>('/api/campaigns/email', fetcher);
   const { data: mockMetaCampaigns = [] } = useSWR<any[]>('/api/campaigns/meta', fetcher);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-56 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-40 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="h-72 bg-zinc-800 rounded-lg animate-pulse" />
+          <div className="h-72 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
   const totalSpend = channelROI.reduce((s, c) => s + c.spend, 0);
   const totalRevenue = channelROI.reduce((s, c) => s + c.revenue, 0);
   const avgCAC = monthlyCAC[monthlyCAC.length - 1].cac;

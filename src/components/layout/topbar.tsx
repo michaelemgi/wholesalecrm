@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import {
   Search,
   Bell,
@@ -13,20 +15,51 @@ import {
   LogOut,
   Settings,
   Command,
+  Shield,
 } from "lucide-react";
-import { mockNotifications } from "@/lib/mock-data/notifications";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Admin",
+  MANAGER: "Manager",
+  SALES_REP: "Sales Rep",
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: "text-red-400",
+  MANAGER: "text-amber-400",
+  SALES_REP: "text-blue-400",
+};
 
 export function Topbar() {
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle("light");
   };
 
-  const unreadCount = mockNotifications.filter((n) => !n.read).length;
+  const { data: notifications = [] } = useSWR<any[]>("/api/notifications", fetcher);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??";
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface/80 backdrop-blur-xl px-6">
@@ -79,7 +112,7 @@ export function Topbar() {
                 <span className="text-xs text-text-muted">{unreadCount} unread</span>
               </div>
               <div className="max-h-80 overflow-y-auto">
-                {mockNotifications.slice(0, 8).map((n) => (
+                {notifications.slice(0, 8).map((n) => (
                   <div
                     key={n.id}
                     className={cn(
@@ -120,11 +153,13 @@ export function Topbar() {
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-hover transition-colors"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-              AG
+              {initials}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-text-primary">Adam Groogan</p>
-              <p className="text-xs text-text-muted">Admin</p>
+              <p className="text-sm font-medium text-text-primary">{user?.name || "User"}</p>
+              <p className={cn("text-xs", ROLE_COLORS[user?.role || ""] || "text-text-muted")}>
+                {ROLE_LABELS[user?.role || ""] || user?.role}
+              </p>
             </div>
             <ChevronDown className="h-3 w-3 text-text-muted" />
           </button>
@@ -132,20 +167,31 @@ export function Topbar() {
           {showUserMenu && (
             <div className="absolute right-0 top-12 w-56 rounded-xl border border-border bg-surface shadow-2xl">
               <div className="border-b border-border px-4 py-3">
-                <p className="text-sm font-medium text-text-primary">Adam Groogan</p>
-                <p className="text-xs text-text-muted">adam@wholesale-co.com</p>
-                <p className="mt-1 text-xs text-primary">Enterprise Plan</p>
+                <p className="text-sm font-medium text-text-primary">{user?.name}</p>
+                <p className="text-xs text-text-muted">{user?.email}</p>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <Shield className="h-3 w-3 text-primary" />
+                  <span className={cn("text-xs font-medium", ROLE_COLORS[user?.role || ""])}>
+                    {ROLE_LABELS[user?.role || ""]} — Enterprise Plan
+                  </span>
+                </div>
               </div>
               <div className="py-1">
                 <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary">
                   <User className="h-4 w-4" />
                   Profile
                 </button>
-                <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary">
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                >
                   <Settings className="h-4 w-4" />
                   Settings
                 </button>
-                <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-surface-hover">
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-surface-hover"
+                >
                   <LogOut className="h-4 w-4" />
                   Sign out
                 </button>

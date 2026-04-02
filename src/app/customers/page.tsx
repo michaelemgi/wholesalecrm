@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Building2, DollarSign, CreditCard,
@@ -1055,10 +1056,28 @@ function CustomerDetailPanel({ customer, orders, products, team, onClose }: {
 
 // --- Main Page ---
 export default function CustomersPage() {
-  const { data: mockCustomers = [], mutate: mutateCustomers } = useSWR<Customer[]>('/api/customers', fetcher);
+  const { data: mockCustomers = [], mutate: mutateCustomers, isLoading } = useSWR<Customer[]>('/api/customers', fetcher);
   const { data: mockOrders = [] } = useSWR<Order[]>('/api/orders', fetcher);
   const { data: mockTeam = [] } = useSWR<{ id: string; name: string; role: string }[]>('/api/team', fetcher);
   const { data: mockProducts = [] } = useSWR<Product[]>('/api/products', fetcher);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 w-64 bg-zinc-800 rounded animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("All");
@@ -1481,8 +1500,10 @@ function CreateCustomerModal({ team, onClose, onCreated }: {
       };
       const res = await fetch("/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error("Failed to create customer");
+      toast.success("Customer created successfully");
       onCreated();
     } catch (e: any) {
+      toast.error(e.message || "Failed to create customer");
       setError(e.message || "Something went wrong");
     } finally {
       setSaving(false);
@@ -1742,7 +1763,9 @@ function ImportCustomersModal({
       const results = await res.json();
       setImportResults(results);
       setStep("done");
+      toast.success("Customers imported successfully");
     } catch (err: any) {
+      toast.error(err.message || "Import failed");
       setError(err.message || "Import failed");
       setStep("preview");
     }

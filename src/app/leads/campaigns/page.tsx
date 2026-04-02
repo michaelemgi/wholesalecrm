@@ -30,7 +30,31 @@ function StatusBadge({ status }: { status: EmailCampaign["status"] }) {
 }
 
 export default function CampaignsPage() {
-  const { data: mockEmailCampaigns = [] } = useSWR<EmailCampaign[]>('/api/campaigns/email', fetcher);
+  const { data: mockEmailCampaigns = [], isLoading } = useSWR<EmailCampaign[]>('/api/campaigns/email', fetcher);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-52 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-72 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-36 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   type SortField = "name" | "status" | "sent" | "opened" | "replied" | "openRate" | "replyRate" | "bounceRate" | "positiveReplyRate" | "totalContacts";
   type SortDir = "asc" | "desc";

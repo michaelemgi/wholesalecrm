@@ -1,15 +1,30 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
+import bcrypt from "bcryptjs";
 import path from "path";
 
-const dbPath = path.resolve(process.cwd(), "dev.db");
+const dbPath = path.resolve(__dirname, "dev.db");
 const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    console.error("ERROR: Seed script cannot run in production. Set NODE_ENV=development to seed.");
+    process.exit(1);
+  }
   console.log("Seeding database...");
 
   // ─── CLEAR ALL TABLES (FK order) ──────────────────────────────────────────
+  await prisma.userSession.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.setting.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.scheduledReport.deleteMany();
+  await prisma.npdProduct.deleteMany();
+  await prisma.dealActivity.deleteMany();
+  await prisma.priceChangeNotice.deleteMany();
+  await prisma.shipment.deleteMany();
+  await prisma.return.deleteMany();
   await prisma.customerProductPrice.deleteMany();
   await prisma.billingAgreement.deleteMany();
   await prisma.paymentCard.deleteMany();
@@ -37,6 +52,20 @@ async function main() {
   await prisma.supplier.deleteMany();
 
   console.log("Cleared all tables.");
+
+  // ─── USERS ──────────────────────────────────────────────────────────────────
+  const usersData = [
+    { id: "user-001", email: "admin@wholesaleos.com", password: "admin123", name: "Sarah Mitchell", role: "ADMIN", avatar: null },
+    { id: "user-002", email: "manager@wholesaleos.com", password: "manager123", name: "Mike Thompson", role: "MANAGER", avatar: null },
+    { id: "user-003", email: "sales@wholesaleos.com", password: "sales123", name: "Alex Rivera", role: "SALES_REP", avatar: null },
+  ];
+  for (const u of usersData) {
+    const passwordHash = await bcrypt.hash(u.password, 10);
+    await prisma.user.create({
+      data: { id: u.id, email: u.email, passwordHash, name: u.name, role: u.role, avatar: u.avatar },
+    });
+  }
+  console.log("Seeded 3 users.");
 
   // ─── SUPPLIERS ────────────────────────────────────────────────────────────
   const suppliers = [
@@ -761,6 +790,130 @@ async function main() {
     await prisma.notification.create({ data: n });
   }
   console.log("Seeded 10 notifications.");
+
+  // ─── SHIPMENTS ────────────────────────────────────────────────────────────
+  const shipmentsData = [
+    { id: "shp-001", trackingNumber: "TRK100001", orderId: "ord-001", customerId: "cust-001", carrier: "FedEx Ground", status: "Delivered", shippedAt: "2026-03-20", estimatedDelivery: "2026-03-24", deliveredAt: "2026-03-23" },
+    { id: "shp-002", trackingNumber: "TRK100002", orderId: "ord-002", customerId: "cust-002", carrier: "UPS Standard", status: "In Transit", shippedAt: "2026-03-27", estimatedDelivery: "2026-03-31" },
+    { id: "shp-003", trackingNumber: "TRK100003", orderId: "ord-003", customerId: "cust-003", carrier: "LTL Freight", status: "Picked Up", shippedAt: "2026-03-28", estimatedDelivery: "2026-04-02" },
+    { id: "shp-004", trackingNumber: "TRK100004", orderId: "ord-004", customerId: "cust-004", carrier: "FedEx Ground", status: "Delivered", shippedAt: "2026-03-18", estimatedDelivery: "2026-03-22", deliveredAt: "2026-03-21" },
+    { id: "shp-005", trackingNumber: "TRK100005", orderId: "ord-005", customerId: "cust-005", carrier: "Local Delivery", status: "Out for Delivery", shippedAt: "2026-03-28", estimatedDelivery: "2026-03-28" },
+    { id: "shp-006", trackingNumber: "TRK100006", orderId: "ord-006", customerId: "cust-006", carrier: "UPS Standard", status: "Delivered", shippedAt: "2026-03-15", estimatedDelivery: "2026-03-19", deliveredAt: "2026-03-18" },
+    { id: "shp-007", trackingNumber: "TRK100007", orderId: "ord-007", customerId: "cust-007", carrier: "FedEx Ground", status: "In Transit", shippedAt: "2026-03-26", estimatedDelivery: "2026-03-30" },
+    { id: "shp-008", trackingNumber: "TRK100008", orderId: "ord-008", customerId: "cust-008", carrier: "LTL Freight", status: "Exception", shippedAt: "2026-03-22", estimatedDelivery: "2026-03-26" },
+    { id: "shp-009", trackingNumber: "TRK100009", orderId: "ord-009", customerId: "cust-009", carrier: "UPS Standard", status: "Delivered", shippedAt: "2026-03-10", estimatedDelivery: "2026-03-14", deliveredAt: "2026-03-13" },
+    { id: "shp-010", trackingNumber: "TRK100010", orderId: "ord-010", customerId: "cust-010", carrier: "Local Delivery", status: "Picked Up", shippedAt: "2026-03-29", estimatedDelivery: "2026-03-29" },
+  ];
+
+  for (const s of shipmentsData) {
+    await prisma.shipment.create({ data: s });
+  }
+  console.log("Seeded 10 shipments.");
+
+  // ─── RETURNS / RMA ───────────────────────────────────────────────────────
+  const returnsData = [
+    { id: "ret-001", rmaNumber: "RMA-0001", orderId: "ord-004", customerId: "cust-004", reason: "Damaged in transit — steel pipe bent during shipping", status: "Approved", refundAmount: 1740, notes: "Carrier claim filed with FedEx" },
+    { id: "ret-002", rmaNumber: "RMA-0002", orderId: "ord-006", customerId: "cust-006", reason: "Wrong item shipped — ordered stretch wrap, received kraft paper", status: "Refund Issued", refundAmount: 396, notes: "Replacement shipped same day" },
+    { id: "ret-003", rmaNumber: "RMA-0003", orderId: "ord-001", customerId: "cust-001", reason: "Product quality issue — olive oil cloudiness beyond acceptable spec", status: "Pending", refundAmount: 0, notes: "QA team reviewing sample" },
+    { id: "ret-004", rmaNumber: "RMA-0004", orderId: "ord-008", customerId: "cust-008", reason: "Overshipment — received 500 bags cement, ordered 300", status: "Closed", refundAmount: 0, notes: "Customer agreed to keep extra at discounted rate" },
+  ];
+
+  for (const r of returnsData) {
+    await prisma.return.create({ data: r });
+  }
+  console.log("Seeded 4 returns.");
+
+  // ─── DEAL ACTIVITIES ─────────────────────────────────────────────────────
+  const dealActivitiesData = [
+    { id: "da-001", dealId: "deal-001", type: "stage_change", description: "Deal moved to Negotiation stage", oldStage: "Proposal Sent", newStage: "Negotiation", createdBy: "Sarah Mitchell", createdAt: new Date("2026-03-24T10:00:00Z") },
+    { id: "da-002", dealId: "deal-001", type: "call", description: "45-minute pricing discussion with Michael Torres — they want 8% volume discount", createdBy: "Sarah Mitchell", createdAt: new Date("2026-03-25T14:30:00Z") },
+    { id: "da-003", dealId: "deal-001", type: "email", description: "Sent revised pricing proposal with tiered discount structure", createdBy: "Sarah Mitchell", createdAt: new Date("2026-03-26T09:00:00Z") },
+    { id: "da-004", dealId: "deal-006", type: "stage_change", description: "Deal moved to Negotiation stage", oldStage: "Proposal Sent", newStage: "Negotiation", createdBy: "Mike Thompson", createdAt: new Date("2026-03-27T11:00:00Z") },
+    { id: "da-005", dealId: "deal-006", type: "meeting", description: "On-site visit to review warehouse capabilities — very positive", createdBy: "Mike Thompson", createdAt: new Date("2026-03-26T15:00:00Z") },
+    { id: "da-006", dealId: "deal-006", type: "note", description: "Legal team reviewing contract — expect signature by end of week", createdBy: "Mike Thompson", createdAt: new Date("2026-03-28T09:00:00Z") },
+    { id: "da-007", dealId: "deal-011", type: "stage_change", description: "Deal closed — Won!", oldStage: "Negotiation", newStage: "Won", createdBy: "Sarah Mitchell", createdAt: new Date("2026-03-22T16:00:00Z") },
+    { id: "da-008", dealId: "deal-012", type: "stage_change", description: "Deal lost to competitor on pricing", oldStage: "Proposal Sent", newStage: "Lost", createdBy: "Mike Thompson", createdAt: new Date("2026-03-20T11:00:00Z") },
+    { id: "da-009", dealId: "deal-003", type: "call", description: "Discovery call with Jason Lee — strong interest in organic product line", createdBy: "Sarah Mitchell", createdAt: new Date("2026-03-25T10:00:00Z") },
+    { id: "da-010", dealId: "deal-005", type: "email", description: "Sent comprehensive product catalog and pricing sheet", createdBy: "David Lee", createdAt: new Date("2026-03-27T08:30:00Z") },
+  ];
+
+  for (const da of dealActivitiesData) {
+    await prisma.dealActivity.create({ data: da });
+  }
+  console.log("Seeded 10 deal activities.");
+
+  // ─── NPD PRODUCTS ────────────────────────────────────────────────────────
+  const npdProductsData = [
+    { id: "npd-001", name: "Organic Plant-Based Protein Powder 5lb", targetMarket: "Health Food Distributors", stage: "Testing", progress: 72, estimatedCost: 45000, estimatedRevenue: 320000, assignedTo: "Sarah Mitchell", notes: "Lab tests complete — taste panel next week. 3 flavor variants." },
+    { id: "npd-002", name: "Eco-Friendly Insulated Shipping Container", targetMarket: "Cold Chain Logistics", stage: "Research", progress: 35, estimatedCost: 120000, estimatedRevenue: 890000, assignedTo: "Mike Thompson", notes: "Evaluating compostable insulation materials. Patent search in progress." },
+    { id: "npd-003", name: "Smart Inventory RFID Tags (Bulk)", targetMarket: "Warehouse Operations", stage: "Concept", progress: 10, estimatedCost: 80000, estimatedRevenue: 540000, assignedTo: "David Lee", notes: "Initial concept — need to evaluate tag durability in cold storage." },
+    { id: "npd-004", name: "Premium Artisan Hot Sauce Collection", targetMarket: "Specialty Food Retailers", stage: "Launch Ready", progress: 95, estimatedCost: 28000, estimatedRevenue: 175000, assignedTo: "Sarah Mitchell", notes: "Packaging finalized. First production run complete. Launch April 15." },
+    { id: "npd-005", name: "Biodegradable Pallet Wrap", targetMarket: "Eco-Conscious Warehouses", stage: "Testing", progress: 60, estimatedCost: 65000, estimatedRevenue: 420000, assignedTo: "Mike Thompson", notes: "Load-bearing tests ongoing. Comparable to traditional stretch wrap at 85% strength." },
+    { id: "npd-006", name: "Industrial Degreaser Concentrate (Green Formula)", targetMarket: "Manufacturing & Maintenance", stage: "Research", progress: 28, estimatedCost: 35000, estimatedRevenue: 280000, assignedTo: "David Lee", notes: "EPA compliance review started. Reformulated to remove VOCs." },
+    { id: "npd-007", name: "Freeze-Dried Emergency Meal Kits", targetMarket: "Government & Disaster Relief", stage: "Concept", progress: 5, estimatedCost: 150000, estimatedRevenue: 1200000, assignedTo: "Sarah Mitchell", notes: "RFP response opportunity with FEMA — need product by Q3." },
+    { id: "npd-008", name: "Wholesale CBD-Infused Beverages", targetMarket: "Beverage Distributors", stage: "Launched", progress: 100, estimatedCost: 55000, estimatedRevenue: 380000, assignedTo: "David Lee", notes: "Launched March 1. First month revenue: $42K. Positive retailer feedback." },
+  ];
+
+  for (const npd of npdProductsData) {
+    await prisma.npdProduct.create({ data: npd });
+  }
+  console.log("Seeded 8 NPD products.");
+
+  // ─── SCHEDULED REPORTS ───────────────────────────────────────────────────
+  const scheduledReportsData = [
+    { id: "sr-001", reportId: "revenue-summary", reportName: "Revenue Summary", frequency: "Weekly", dayOfWeek: "Monday", timeOfDay: "08:00", recipients: JSON.stringify(["ceo@company.com", "cfo@company.com"]), format: "PDF", dateRange: "Last 7 Days", status: "Active", lastSentAt: "2026-03-24T08:00:00Z", nextRunAt: "2026-03-31T08:00:00Z" },
+    { id: "sr-002", reportId: "inventory-status", reportName: "Inventory Status Report", frequency: "Daily", timeOfDay: "06:00", recipients: JSON.stringify(["warehouse@company.com", "ops@company.com"]), format: "CSV", dateRange: "Current", status: "Active", lastSentAt: "2026-03-28T06:00:00Z", nextRunAt: "2026-03-29T06:00:00Z" },
+    { id: "sr-003", reportId: "sales-pipeline", reportName: "Sales Pipeline Report", frequency: "Weekly", dayOfWeek: "Friday", timeOfDay: "17:00", recipients: JSON.stringify(["vp-sales@company.com"]), format: "PDF", dateRange: "Last 7 Days", status: "Active", lastSentAt: "2026-03-21T17:00:00Z", nextRunAt: "2026-03-28T17:00:00Z" },
+    { id: "sr-004", reportId: "accounts-receivable", reportName: "Accounts Receivable Aging", frequency: "Monthly", dayOfMonth: 1, timeOfDay: "09:00", recipients: JSON.stringify(["cfo@company.com", "ar@company.com"]), format: "Both", dateRange: "Last 30 Days", status: "Active", lastSentAt: "2026-03-01T09:00:00Z", nextRunAt: "2026-04-01T09:00:00Z" },
+    { id: "sr-005", reportId: "customer-churn", reportName: "Customer Churn Risk Report", frequency: "Weekly", dayOfWeek: "Wednesday", timeOfDay: "10:00", recipients: JSON.stringify(["cs-manager@company.com"]), format: "PDF", dateRange: "Last 30 Days", status: "Paused", lastSentAt: "2026-03-12T10:00:00Z" },
+    { id: "sr-006", reportId: "quarterly-business", reportName: "Quarterly Business Review", frequency: "Quarterly", dayOfMonth: 1, timeOfDay: "08:00", recipients: JSON.stringify(["ceo@company.com", "cfo@company.com", "coo@company.com"]), format: "PDF", dateRange: "Last 90 Days", status: "Active", lastSentAt: "2026-01-01T08:00:00Z", nextRunAt: "2026-04-01T08:00:00Z" },
+  ];
+
+  for (const sr of scheduledReportsData) {
+    await prisma.scheduledReport.create({ data: sr });
+  }
+  console.log("Seeded 6 scheduled reports.");
+
+  // ─── AUDIT LOGS ──────────────────────────────────────────────────────────
+  const auditLogsData = [
+    { id: "al-001", entityType: "Order", entityId: "ord-001", action: "create", changes: JSON.stringify({ orderNumber: "ORD-2800", status: "Draft", total: 14250 }), performedBy: "Sarah Mitchell", ipAddress: "192.168.1.10", createdAt: new Date("2026-03-28T09:15:00Z") },
+    { id: "al-002", entityType: "Order", entityId: "ord-001", action: "update", changes: JSON.stringify({ status: { from: "Draft", to: "Confirmed" } }), performedBy: "Sarah Mitchell", ipAddress: "192.168.1.10", createdAt: new Date("2026-03-28T09:30:00Z") },
+    { id: "al-003", entityType: "Customer", entityId: "cust-004", action: "update", changes: JSON.stringify({ creditLimit: { from: 150000, to: 175000 } }), performedBy: "Mike Thompson", ipAddress: "192.168.1.15", createdAt: new Date("2026-03-27T14:00:00Z") },
+    { id: "al-004", entityType: "Product", entityId: "prod-033", action: "update", changes: JSON.stringify({ stockLevel: { from: 50, to: 12 }, status: { from: "Active", to: "Low Stock" } }), performedBy: "System", ipAddress: "127.0.0.1", createdAt: new Date("2026-03-27T11:30:00Z") },
+    { id: "al-005", entityType: "Invoice", entityId: "inv-001", action: "create", changes: JSON.stringify({ invoiceNumber: "INV-1924", amount: 8750, status: "Draft" }), performedBy: "Sarah Mitchell", ipAddress: "192.168.1.10", createdAt: new Date("2026-03-26T16:00:00Z") },
+    { id: "al-006", entityType: "Invoice", entityId: "inv-001", action: "update", changes: JSON.stringify({ status: { from: "Sent", to: "Paid" }, paidAmount: 8750 }), performedBy: "System", ipAddress: "127.0.0.1", createdAt: new Date("2026-03-28T08:20:00Z") },
+    { id: "al-007", entityType: "Customer", entityId: "cust-015", action: "create", changes: JSON.stringify({ name: "Summit Foods International", accountTier: "Mid-Market" }), performedBy: "Alex Rivera", ipAddress: "192.168.1.22", createdAt: new Date("2026-03-25T10:00:00Z") },
+    { id: "al-008", entityType: "PipelineDeal", entityId: "deal-011", action: "update", changes: JSON.stringify({ stage: { from: "Negotiation", to: "Won" }, winProbability: { from: 85, to: 100 } }), performedBy: "Sarah Mitchell", ipAddress: "192.168.1.10", createdAt: new Date("2026-03-22T16:00:00Z") },
+    { id: "al-009", entityType: "Product", entityId: "prod-001", action: "update", changes: JSON.stringify({ wholesalePrice: { from: 26, to: 28 } }), performedBy: "Mike Thompson", ipAddress: "192.168.1.15", createdAt: new Date("2026-03-20T09:00:00Z") },
+    { id: "al-010", entityType: "Order", entityId: "ord-010", action: "update", changes: JSON.stringify({ status: { from: "Shipped", to: "Delivered" }, deliveryDate: "2026-03-26" }), performedBy: "System", ipAddress: "127.0.0.1", createdAt: new Date("2026-03-26T14:00:00Z") },
+    { id: "al-011", entityType: "PurchaseOrder", entityId: "po-001", action: "create", changes: JSON.stringify({ poNumber: "PO-5001", supplierName: "Global Supply Co.", total: 24500 }), performedBy: "David Lee", ipAddress: "192.168.1.18", createdAt: new Date("2026-03-24T11:00:00Z") },
+    { id: "al-012", entityType: "Customer", entityId: "cust-003", action: "update", changes: JSON.stringify({ outstandingBalance: { from: 22400, to: 18900 } }), performedBy: "System", ipAddress: "127.0.0.1", createdAt: new Date("2026-03-23T15:30:00Z") },
+    { id: "al-013", entityType: "Lead", entityId: "lead-001", action: "update", changes: JSON.stringify({ score: { from: 65, to: 87 }, status: { from: "Warm", to: "Hot" } }), performedBy: "System", ipAddress: "127.0.0.1", createdAt: new Date("2026-03-28T07:30:00Z") },
+    { id: "al-014", entityType: "Product", entityId: "prod-050", action: "update", changes: JSON.stringify({ unitPrice: { from: 55, to: 58 } }), performedBy: "Mike Thompson", ipAddress: "192.168.1.15", createdAt: new Date("2026-03-19T10:00:00Z") },
+    { id: "al-015", entityType: "Order", entityId: "ord-015", action: "delete", changes: JSON.stringify({ orderNumber: "ORD-2814", reason: "Duplicate entry" }), performedBy: "David Lee", ipAddress: "192.168.1.18", createdAt: new Date("2026-03-18T09:00:00Z") },
+  ];
+
+  for (const al of auditLogsData) {
+    await prisma.auditLog.create({ data: al });
+  }
+  console.log("Seeded 15 audit logs.");
+
+  // ─── PRICE CHANGE NOTICES ────────────────────────────────────────────────
+  const priceChangeData = [
+    { id: "pcn-001", productId: "prod-001", oldPrice: 26, newPrice: 28, effectiveDate: "2026-04-01", status: "Notified", notifiedAt: "2026-03-20T09:00:00Z" },
+    { id: "pcn-002", productId: "prod-021", oldPrice: 6, newPrice: 7, effectiveDate: "2026-04-01", status: "Acknowledged", notifiedAt: "2026-03-18T10:00:00Z" },
+    { id: "pcn-003", productId: "prod-041", oldPrice: 52, newPrice: 58, effectiveDate: "2026-04-15", status: "Pending" },
+    { id: "pcn-004", productId: "prod-010", oldPrice: 58, newPrice: 62, effectiveDate: "2026-04-01", status: "Notified", notifiedAt: "2026-03-22T14:00:00Z" },
+    { id: "pcn-005", productId: "prod-043", oldPrice: 180, newPrice: 195, effectiveDate: "2026-04-15", status: "Pending" },
+    { id: "pcn-006", productId: "prod-012", oldPrice: 170, newPrice: 185, effectiveDate: "2026-03-15", status: "Acknowledged", notifiedAt: "2026-03-01T08:00:00Z" },
+    { id: "pcn-007", productId: "prod-050", oldPrice: 36, newPrice: 40, effectiveDate: "2026-04-01", status: "Notified", notifiedAt: "2026-03-25T11:00:00Z" },
+    { id: "pcn-008", productId: "prod-006", oldPrice: 68, newPrice: 72, effectiveDate: "2026-04-01", status: "Acknowledged", notifiedAt: "2026-03-15T09:00:00Z" },
+  ];
+
+  for (const pcn of priceChangeData) {
+    await prisma.priceChangeNotice.create({ data: pcn });
+  }
+  console.log("Seeded 8 price change notices.");
 
   console.log("\nDatabase seeding complete!");
 }

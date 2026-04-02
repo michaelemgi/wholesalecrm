@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart, DollarSign, Clock, Package,
@@ -36,7 +37,34 @@ const allStatuses = ["All", "Draft", "Confirmed", "Processing", "Picking", "Pack
 const allPaymentStatuses = ["All", "Unpaid", "Partial", "Paid", "Overdue"];
 
 export default function SalesOrdersPage() {
-  const { data: mockOrders = [], mutate: mutateOrders } = useSWR<any[]>('/api/orders', fetcher);
+  const { data: mockOrders = [], mutate: mutateOrders, isLoading } = useSWR<any[]>('/api/orders', fetcher);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
+            <div className="h-10 w-28 bg-zinc-800 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -637,10 +665,11 @@ function CreateOrderModal({
       });
 
       if (!res.ok) throw new Error("Failed to create order");
+      toast.success("Order created successfully");
       onCreated();
     } catch (err) {
       console.error(err);
-      alert("Failed to create order. Please try again.");
+      toast.error("Failed to create order. Please try again.");
     } finally {
       setSubmitting(false);
     }

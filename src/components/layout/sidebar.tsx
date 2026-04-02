@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth, type UserRole } from "@/lib/auth-context";
 import {
   LayoutDashboard,
   Target,
@@ -37,6 +38,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  minRole?: UserRole;
   children?: { label: string; href: string; icon: React.ElementType }[];
 }
 
@@ -72,6 +74,7 @@ const navigation: NavItem[] = [
     label: "Financial Hub",
     href: "/finance",
     icon: DollarSign,
+    minRole: "MANAGER",
     children: [
       { label: "Receivables", href: "/finance/receivables", icon: CreditCard },
       { label: "Payables", href: "/finance/payables", icon: Wallet },
@@ -80,15 +83,26 @@ const navigation: NavItem[] = [
   },
   { label: "Marketing", href: "/marketing", icon: Megaphone },
   { label: "AI Command Center", href: "/ai", icon: Bot },
-  { label: "Team & Performance", href: "/team", icon: UserCheck },
-  { label: "Reports", href: "/reports", icon: FileText },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Team & Performance", href: "/team", icon: UserCheck, minRole: "MANAGER" },
+  { label: "Reports", href: "/reports", icon: FileText, minRole: "MANAGER" },
+  { label: "Settings", href: "/settings", icon: Settings, minRole: "ADMIN" },
 ];
+
+const ROLE_LEVEL: Record<UserRole, number> = { ADMIN: 3, MANAGER: 2, SALES_REP: 1 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { user } = useAuth();
+
+  const filteredNav = useMemo(() => {
+    const userLevel = ROLE_LEVEL[user?.role || "SALES_REP"];
+    return navigation.filter((item) => {
+      if (!item.minRole) return true;
+      return userLevel >= ROLE_LEVEL[item.minRole];
+    });
+  }, [user?.role]);
 
   const toggleExpand = (label: string) => {
     setExpandedItems((prev) =>
@@ -113,7 +127,7 @@ export function Sidebar() {
               <Zap className="h-4 w-4 text-white" />
             </div>
             <span className="font-heading text-lg font-bold text-text-primary">
-              WholesaleOS
+              {process.env.NEXT_PUBLIC_APP_NAME || "WholesaleOS"}
             </span>
           </div>
         )}
@@ -127,7 +141,7 @@ export function Sidebar() {
       {/* Nav items */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
-          {navigation.map((item) => {
+          {filteredNav.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             const expanded = expandedItems.includes(item.label);

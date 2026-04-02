@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, customerSchema } from "@/lib/validation";
+import { parsePagination, paginatedResponse, parseSearch, logRequest } from "@/lib/api-utils";
 
 function transformCustomer(c: any) {
   const contacts = c.contacts?.map((ct: any) => ({
@@ -19,9 +21,38 @@ function transformCustomer(c: any) {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    logRequest(request);
+    const url = new URL(request.url);
+    const hasPagination = url.searchParams.has("page");
+    const search = parseSearch(request);
+
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { companyName: { contains: search } },
+        { email: { contains: search } },
+      ];
+    }
+
+    if (hasPagination) {
+      const pagination = parsePagination(request);
+      const [customers, total] = await Promise.all([
+        prisma.customer.findMany({
+          where,
+          include: { contacts: true },
+          orderBy: { createdAt: "desc" },
+          skip: pagination.skip,
+          take: pagination.limit,
+        }),
+        prisma.customer.count({ where }),
+      ]);
+      return paginatedResponse(customers.map(transformCustomer), total, pagination);
+    }
+
     const customers = await prisma.customer.findMany({
+      where,
       include: { contacts: true },
       orderBy: { createdAt: "desc" },
     });
@@ -35,6 +66,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const v = validateBody(customerSchema, body);
+    if (!v.success) return v.response;
     const { contacts, ...customerData } = body;
 
     const customer = await prisma.customer.create({
@@ -52,6 +85,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transformCustomer(customer), { status: 201 });
   } catch (error) {
     console.error("Failed to create customer:", error);
-    return NextResponse.json({ error: "Failed to create customer" }, { status: 500 });
+    return apiError("Failed to create customer", 500);
   }
 }

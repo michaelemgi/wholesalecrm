@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
-import { CommandPalette } from "@/components/layout/command-palette";
+import { AuthProvider } from "@/lib/auth-context";
+import { AuthLayout } from "@/components/layout/auth-layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,14 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-background antialiased">
-        <Sidebar />
-        <div className="pl-[260px] transition-all duration-300">
-          <Topbar />
-          <main className="min-h-[calc(100vh-4rem)] p-6">
-            {children}
-          </main>
-        </div>
-        <CommandPalette />
+        <AuthProvider>
+          <AuthLayout>{children}</AuthLayout>
+        </AuthProvider>
         <Toaster
           position="bottom-right"
           toastOptions={{

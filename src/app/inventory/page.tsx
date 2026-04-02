@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, DollarSign, AlertTriangle, XCircle,
@@ -1890,7 +1891,9 @@ function ImportModal({
       const results = await res.json();
       setImportResults(results);
       setStep("done");
+      toast.success("Products imported successfully");
     } catch (err: any) {
+      toast.error(err.message || "Import failed");
       setError(err.message || "Import failed");
       setStep("preview");
     }
@@ -2332,8 +2335,10 @@ function CreateProductModal({ onClose, onCreated }: { onClose: () => void; onCre
       if (form.tags.trim()) body.tags = form.tags.trim();
       const res = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error("Failed to create product");
+      toast.success("Product created successfully");
       onCreated();
     } catch (e: any) {
+      toast.error(e.message || "Failed to create product");
       setError(e.message || "Something went wrong");
     } finally {
       setSaving(false);
@@ -2851,9 +2856,27 @@ function NPDTab() {
 
 // --- Main Page ---
 export default function InventoryPage() {
-  const { data: apiProducts = [], mutate: mutateProducts } = useSWR<Product[]>('/api/products', fetcher);
+  const { data: apiProducts = [], mutate: mutateProducts, isLoading } = useSWR<Product[]>('/api/products', fetcher);
   const { data: mockCustomers = [] } = useSWR<any[]>('/api/customers', fetcher);
   const { data: mockOrders = [] } = useSWR<any[]>('/api/orders', fetcher);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-8 w-56 bg-zinc-800 rounded animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-16 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const [activeTab, setActiveTab] = useState<"catalog" | "stock" | "prices" | "stocktake" | "brands" | "npd">("catalog");
   const [brandFilter, setBrandFilter] = useState<string | null>(null);

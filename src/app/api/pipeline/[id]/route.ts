@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, pipelineDealSchema } from "@/lib/validation";
 
 export async function GET(
   request: NextRequest,
@@ -28,6 +29,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(pipelineDealSchema.partial(), body);
+    if (!v.success) return v.response;
     const deal = await prisma.pipelineDeal.update({
       where: { id },
       data: body,
@@ -36,7 +39,7 @@ export async function PUT(
     return NextResponse.json(deal);
   } catch (error) {
     console.error("Failed to update pipeline deal:", error);
-    return NextResponse.json({ error: "Failed to update pipeline deal" }, { status: 500 });
+    return apiError("Failed to update pipeline deal", 500);
   }
 }
 

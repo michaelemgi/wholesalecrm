@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, leadSchema } from "@/lib/validation";
+import { parsePagination, paginatedResponse, parseSearch, logRequest } from "@/lib/api-utils";
 
 function transformLead(l: any) {
   return {
@@ -11,11 +13,13 @@ function transformLead(l: any) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const source = searchParams.get("source");
-    const assignedRep = searchParams.get("assignedRep");
-    const search = searchParams.get("search");
+    logRequest(request);
+    const url = new URL(request.url);
+    const hasPagination = url.searchParams.has("page");
+    const search = parseSearch(request);
+    const status = url.searchParams.get("status");
+    const source = url.searchParams.get("source");
+    const assignedRep = url.searchParams.get("assignedRep");
 
     const where: any = {};
     if (status) where.status = status;
@@ -27,6 +31,20 @@ export async function GET(request: NextRequest) {
         { contactName: { contains: search } },
         { email: { contains: search } },
       ];
+    }
+
+    if (hasPagination) {
+      const pagination = parsePagination(request);
+      const [leads, total] = await Promise.all([
+        prisma.lead.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: pagination.skip,
+          take: pagination.limit,
+        }),
+        prisma.lead.count({ where }),
+      ]);
+      return paginatedResponse(leads.map(transformLead), total, pagination);
     }
 
     const leads = await prisma.lead.findMany({
@@ -43,6 +61,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const v = validateBody(leadSchema, body);
+    if (!v.success) return v.response;
     const lead = await prisma.lead.create({
       data: {
         ...body,
@@ -53,6 +73,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transformLead(lead), { status: 201 });
   } catch (error) {
     console.error("Failed to create lead:", error);
-    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+    return apiError("Failed to create lead", 500);
   }
 }

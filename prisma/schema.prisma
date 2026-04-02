@@ -28,6 +28,9 @@ model Customer {
   topProducts        String   @default("[]") // JSON array of strings
   tags               String   @default("[]") // JSON array of strings
 
+  notes                String?
+  website              String?
+
   contacts             Contact[]
   orders               Order[]
   invoices             Invoice[]
@@ -38,6 +41,8 @@ model Customer {
   billingAgreements    BillingAgreement[]
   paymentCards         PaymentCard[]
   customerProductPrices CustomerProductPrice[]
+  shipments            Shipment[]
+  returns              Return[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,6 +96,7 @@ model Product {
   standingOrderItems  StandingOrderItem[]
   purchaseOrderItems  PurchaseOrderItem[]
   customerProductPrices CustomerProductPrice[]
+  priceChangeNotices  PriceChangeNotice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,6 +126,8 @@ model Order {
 
   items    OrderItem[]
   invoices Invoice[]
+  shipments Shipment[]
+  returns   Return[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -261,6 +269,8 @@ model PipelineDeal {
 
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
+
+  activities DealActivity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -511,6 +521,152 @@ model Communication {
   rep        String
   date       String
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── SHIPMENTS ──────────────────────────────────────────────────────────────
+
+model Shipment {
+  id                String   @id @default(cuid())
+  trackingNumber    String
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id])
+  customerId        String
+  customer          Customer @relation(fields: [customerId], references: [id])
+  carrier           String   // "UPS Standard" | "FedEx Ground" | "LTL Freight" | "Local Delivery"
+  status            String   @default("Picked Up") // "Picked Up" | "In Transit" | "Out for Delivery" | "Delivered" | "Exception"
+  shippedAt         String?
+  estimatedDelivery String?
+  deliveredAt       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── RETURNS / RMA ──────────────────────────────────────────────────────────
+
+model Return {
+  id           String   @id @default(cuid())
+  rmaNumber    String   @unique
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id])
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  reason       String
+  status       String   @default("Pending") // "Pending" | "Approved" | "Refund Issued" | "Rejected" | "Closed"
+  refundAmount Float    @default(0)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── DEAL ACTIVITY ──────────────────────────────────────────────────────────
+
+model DealActivity {
+  id          String       @id @default(cuid())
+  dealId      String
+  deal        PipelineDeal @relation(fields: [dealId], references: [id])
+  type        String       // "stage_change" | "note" | "email" | "call" | "meeting"
+  description String?
+  oldStage    String?
+  newStage    String?
+  createdBy   String?
+  createdAt   DateTime     @default(now())
+}
+
+// ─── NPD (NEW PRODUCT DEVELOPMENT) ─────────────────────────────────────────
+
+model NpdProduct {
+  id               String   @id @default(cuid())
+  name             String
+  targetMarket     String?
+  stage            String   @default("Concept") // "Concept" | "Research" | "Testing" | "Launch Ready" | "Launched"
+  progress         Int      @default(0)
+  estimatedCost    Float    @default(0)
+  estimatedRevenue Float    @default(0)
+  assignedTo       String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── SCHEDULED REPORTS ──────────────────────────────────────────────────────
+
+model ScheduledReport {
+  id          String   @id @default(cuid())
+  reportId    String
+  reportName  String
+  frequency   String   // "Daily" | "Weekly" | "Monthly" | "Quarterly"
+  dayOfWeek   String?  // "Monday" | "Tuesday" etc.
+  dayOfMonth  Int?
+  timeOfDay   String   @default("08:00")
+  recipients  String   @default("[]") // JSON array of emails
+  format      String   @default("PDF") // "PDF" | "CSV" | "Both"
+  dateRange   String   @default("Last 30 Days")
+  status      String   @default("Active") // "Active" | "Paused"
+  lastSentAt  String?
+  nextRunAt   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── AUDIT LOG ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String   // "Customer" | "Order" | "Product" etc.
+  entityId    String
+  action      String   // "create" | "update" | "delete"
+  changes     String?  // JSON of what changed
+  performedBy String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+// ─── PRICE CHANGE NOTICES ───────────────────────────────────────────────────
+
+model PriceChangeNotice {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  oldPrice      Float
+  newPrice      Float
+  effectiveDate String
+  status        String   @default("Pending") // "Pending" | "Notified" | "Acknowledged"
+  notifiedAt    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── USERS & AUTH ────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("SALES_REP") // "ADMIN" | "MANAGER" | "SALES_REP"
+  avatar       String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON string
+  updatedBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

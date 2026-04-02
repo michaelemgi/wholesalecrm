@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody, apiError, customerSchema } from "@/lib/validation";
 
 function transformCustomer(c: any) {
   const contacts = c.contacts?.map((ct: any) => ({
@@ -58,6 +59,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const v = validateBody(customerSchema.partial(), body);
+    if (!v.success) return v.response;
     const { contacts, ...updateData } = body;
 
     if (updateData.topProducts) {
@@ -76,7 +79,7 @@ export async function PUT(
     return NextResponse.json(transformCustomer(customer));
   } catch (error) {
     console.error("Failed to update customer:", error);
-    return NextResponse.json({ error: "Failed to update customer" }, { status: 500 });
+    return apiError("Failed to update customer", 500);
   }
 }
 

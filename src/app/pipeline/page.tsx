@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
   LayoutGrid, List, CalendarRange, GripVertical,
@@ -261,11 +262,14 @@ function CreateDealModal({
         body: JSON.stringify(body),
       });
       if (res.ok) {
+        toast.success("Deal created successfully");
         onCreated();
         onClose();
+      } else {
+        toast.error("Failed to create deal");
       }
     } catch {
-      // silently fail
+      toast.error("Failed to create deal");
     } finally {
       setSubmitting(false);
     }
@@ -516,7 +520,8 @@ function KanbanColumn({
 type ViewMode = "kanban" | "list" | "timeline";
 
 export default function PipelinePage() {
-  const { data: initialDeals = [], mutate } = useSWR<PipelineDeal[]>("/api/pipeline", fetcher);
+  const { data: initialDeals = [], mutate, isLoading } = useSWR<PipelineDeal[]>("/api/pipeline", fetcher);
+
   const [deals, setDeals] = useState<PipelineDeal[]>([]);
   const [initialized, setInitialized] = useState(false);
 
@@ -678,6 +683,30 @@ export default function PipelinePage() {
     { key: "list" as ViewMode, label: "List", icon: List },
     { key: "timeline" as ViewMode, label: "Timeline", icon: CalendarRange },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-40 bg-zinc-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-4">
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="h-96 bg-zinc-800 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
