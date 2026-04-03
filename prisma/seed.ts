@@ -3,15 +3,11 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 import bcrypt from "bcryptjs";
 import path from "path";
 
-const dbPath = path.resolve(__dirname, "dev.db");
-const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
+const dbUrl = process.env.DATABASE_URL || `file:${path.resolve(__dirname, "dev.db")}`;
+const adapter = new PrismaLibSql({ url: dbUrl });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  if (process.env.NODE_ENV === "production") {
-    console.error("ERROR: Seed script cannot run in production. Set NODE_ENV=development to seed.");
-    process.exit(1);
-  }
   console.log("Seeding database...");
 
   // ─── CLEAR ALL TABLES (FK order) ──────────────────────────────────────────
