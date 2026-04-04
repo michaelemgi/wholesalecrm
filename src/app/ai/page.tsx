@@ -83,20 +83,49 @@ export default function AIPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const query = text || input;
     if (!query.trim()) return;
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: query };
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = mockResponses[query] || { text: `I've analyzed your request: "${query}"\n\nBased on your current data, I recommend reviewing the relevant dashboard section for detailed metrics. I can help you dive deeper into any specific area — just ask!` };
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "ai", content: response.text, table: response.table };
-      setMessages(prev => [...prev, aiMsg]);
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages.map((m) => ({
+            role: m.role === "ai" ? "assistant" : m.role,
+            content: m.content,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get response");
+      }
+
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: data.content,
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: `Sorry, I couldn't process that request. ${err.message}`,
+      };
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (

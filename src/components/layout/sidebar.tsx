@@ -32,6 +32,16 @@ import {
   TrendingUp,
   Building2,
   ShoppingBag,
+  Inbox,
+  Brain,
+  Tag,
+  Store,
+  MapPin,
+  ClipboardCheck,
+  RotateCcw,
+  Route,
+  PieChart,
+  Activity,
 } from "lucide-react";
 
 interface NavItem {
@@ -45,6 +55,49 @@ interface NavItem {
 const navigation: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   {
+    label: "Orders",
+    href: "/orders",
+    icon: ShoppingCart,
+    children: [
+      { label: "Sales Orders", href: "/orders/sales-orders", icon: ShoppingCart },
+      { label: "AI Inbox", href: "/orders/ai-inbox", icon: Inbox },
+      { label: "Purchase Orders", href: "/orders/purchase-orders", icon: Package },
+      { label: "Fulfillment", href: "/orders/fulfillment", icon: Truck },
+    ],
+  },
+  {
+    label: "Customer Portal",
+    href: "/portal",
+    icon: Store,
+    children: [
+      { label: "Admin", href: "/portal/admin", icon: Settings },
+      { label: "Customer View", href: "/portal", icon: ShoppingBag },
+    ],
+  },
+  { label: "Products & Stock", href: "/inventory", icon: Boxes },
+  { label: "Customers", href: "/customers", icon: Users },
+  { label: "Suppliers", href: "/suppliers", icon: Building2 },
+  {
+    label: "Delivery",
+    href: "/delivery",
+    icon: Truck,
+    children: [
+      { label: "Routes & Drivers", href: "/delivery", icon: Route },
+      { label: "Proof of Delivery", href: "/delivery?tab=pod", icon: ClipboardCheck },
+      { label: "Returns & Deposits", href: "/delivery?tab=returns", icon: RotateCcw },
+    ],
+  },
+  { label: "Promotions", href: "/promotions", icon: Tag },
+  {
+    label: "Sales",
+    href: "/sales-pro",
+    icon: TrendingUp,
+    children: [
+      { label: "Sales Pro", href: "/sales-pro", icon: UserCheck },
+      { label: "Sales Pipeline", href: "/pipeline", icon: GitBranch },
+    ],
+  },
+  {
     label: "Lead Generation",
     href: "/leads",
     icon: Target,
@@ -52,24 +105,10 @@ const navigation: NavItem[] = [
       { label: "AI Scraper", href: "/leads/scraper", icon: Search },
       { label: "Email Sequences", href: "/leads/sequences", icon: Mail },
       { label: "Unified Inbox", href: "/leads/inbox", icon: MessageSquare },
-      { label: "Campaigns", href: "/leads/campaigns", icon: Megaphone },
-      { label: "Meta Ads", href: "/leads/meta-ads", icon: TrendingUp },
+      { label: "Campaigns & Ads", href: "/leads/campaigns", icon: Megaphone },
+      { label: "Marketing", href: "/marketing", icon: TrendingUp },
     ],
   },
-  { label: "Sales Pipeline", href: "/pipeline", icon: GitBranch },
-  {
-    label: "Orders",
-    href: "/orders",
-    icon: ShoppingCart,
-    children: [
-      { label: "Sales Orders", href: "/orders/sales-orders", icon: ShoppingCart },
-      { label: "Purchase Orders", href: "/orders/purchase-orders", icon: Package },
-      { label: "Fulfillment", href: "/orders/fulfillment", icon: Truck },
-    ],
-  },
-  { label: "Products & Stock", href: "/inventory", icon: Boxes },
-  { label: "Suppliers", href: "/suppliers", icon: Building2 },
-  { label: "Customers", href: "/customers", icon: Users },
   {
     label: "Financial Hub",
     href: "/finance",
@@ -81,7 +120,7 @@ const navigation: NavItem[] = [
       { label: "Cash Flow", href: "/finance/cashflow", icon: BarChart3 },
     ],
   },
-  { label: "Marketing", href: "/marketing", icon: Megaphone },
+  { label: "Analytics", href: "/analytics", icon: PieChart, minRole: "MANAGER" },
   { label: "AI Command Center", href: "/ai", icon: Bot },
   { label: "Team & Performance", href: "/team", icon: UserCheck, minRole: "MANAGER" },
   { label: "Reports", href: "/reports", icon: FileText, minRole: "MANAGER" },

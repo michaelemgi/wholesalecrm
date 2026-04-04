@@ -29,7 +29,7 @@ const returnStatusColors: Record<string, string> = {
   Closed: "bg-gray-500/20 text-gray-400",
 };
 
-type SortField = "orderId" | "customer" | "carrier" | "status" | "shipped" | "estimatedDelivery";
+type SortField = "orderId" | "customer" | "status" | "shipped" | "estimatedDelivery";
 type SortDir = "asc" | "desc";
 
 export default function FulfillmentPage() {
@@ -48,7 +48,6 @@ export default function FulfillmentPage() {
       orderId: s.order?.orderNumber || s.orderId,
       customer: s.customer?.name || "Unknown",
       trackingNumber: s.trackingNumber,
-      carrier: s.carrier,
       status: s.status,
       shipped: s.shippedAt || "",
       estimatedDelivery: s.estimatedDelivery || "",
@@ -211,7 +210,6 @@ export default function FulfillmentPage() {
                 <option value="customer-asc">Customer (A-Z)</option>
                 <option value="customer-desc">Customer (Z-A)</option>
                 <option value="status-asc">Status (A-Z)</option>
-                <option value="carrier-asc">Carrier (A-Z)</option>
               </select>
             </div>
             <span className="text-xs text-text-muted">{sortedShipments.length} shipments</span>
@@ -224,7 +222,6 @@ export default function FulfillmentPage() {
                 <th className="py-3 px-4 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Tracking #</th>
                 <SortHeader label="Order" field="orderId" />
                 <SortHeader label="Customer" field="customer" />
-                <SortHeader label="Carrier" field="carrier" />
                 <SortHeader label="Status" field="status" />
                 <SortHeader label="Shipped" field="shipped" />
                 <SortHeader label="Est. Delivery" field="estimatedDelivery" />
@@ -247,7 +244,6 @@ export default function FulfillmentPage() {
                   </td>
                   <td className="py-3 px-4 font-medium text-text-primary">{s.orderId}</td>
                   <td className="py-3 px-4 text-text-secondary">{s.customer}</td>
-                  <td className="py-3 px-4 text-text-muted">{s.carrier}</td>
                   <td className="py-3 px-4">
                     <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium", shipmentStatusColors[s.status] || "bg-gray-500/20 text-gray-400")}>
                       {s.status}

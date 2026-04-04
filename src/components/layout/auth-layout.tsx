@@ -13,6 +13,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const isLoginPage = pathname === "/login";
+  const isPortalCustomerView = pathname === "/portal";
 
   useEffect(() => {
     if (loading) return;
@@ -44,6 +45,11 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   // Not logged in, redirecting
   if (!user) {
     return null;
+  }
+
+  // Portal customer view — standalone layout, no sidebar/topbar
+  if (isPortalCustomerView) {
+    return <>{children}</>;
   }
 
   // Authenticated layout

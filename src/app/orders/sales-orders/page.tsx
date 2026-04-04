@@ -535,11 +535,8 @@ const TAX_RATE = 0.085;
 
 const PAYMENT_TERMS = ["Net 15", "Net 30", "Net 45", "Net 60", "COD"];
 const SHIPPING_METHODS = [
-  "UPS Standard",
-  "FedEx Ground",
-  "LTL Freight",
-  "Local Delivery",
-  "Customer Pickup",
+  "Delivery",
+  "Pickup",
 ];
 
 function CreateOrderModal({
@@ -558,14 +555,14 @@ function CreateOrderModal({
     { productId: "", productName: "", sku: "", quantity: 1, unitPrice: 0, total: 0 },
   ]);
   const [paymentTerms, setPaymentTerms] = useState("Net 30");
-  const [shippingMethod, setShippingMethod] = useState("UPS Standard");
+  const [shippingMethod, setShippingMethod] = useState("Delivery");
   const [assignedRep, setAssignedRep] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const subtotal = lineItems.reduce((s, li) => s + li.total, 0);
   const tax = Math.round(subtotal * TAX_RATE * 100) / 100;
-  const shippingEstimate = shippingMethod === "Customer Pickup" ? 0 : subtotal > 0 ? 50 : 0;
+  const shippingEstimate = shippingMethod === "Pickup" ? 0 : subtotal > 0 ? 50 : 0;
   const total = Math.round((subtotal + tax + shippingEstimate) * 100) / 100;
 
   const handleCustomerChange = useCallback(
@@ -838,7 +835,7 @@ function CreateOrderModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5">
-                  Shipping Method
+                  Fulfillment
                 </label>
                 <select
                   value={shippingMethod}
